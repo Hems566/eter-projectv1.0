@@ -1,0 +1,48 @@
+/* Assurer le bon fonctionnement de la sidebar fixe */
+.ant-layout-sider-fixed {
+  position: fixed !important;
+  height: 100vh;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 1000;
+}
+
+/* Animation fluide pour le contenu principal */
+.ant-layout {
+  transition: margin-left 0.2s ease-in-out;
+}
+
+/* Scrollbar personnalisée pour la sidebar */
+.ant-layout-sider::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ant-layout-sider::-webkit-scrollbar-track {
+  background: #001529;
+}
+
+.ant-layout-sider::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 3px;
+}
+
+.ant-layout-sider::-webkit-scrollbar-thumb:hover {
+  background: #777;
+}
+
+/* Responsive pour mobile */
+@media (max-width: 768px) {
+  .ant-layout {
+    margin-left: 0 !important;
+  }
+  
+  .ant-layout-sider-fixed {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+  }
+  
+  .ant-layout-sider-fixed.ant-layout-sider-collapsed {
+    transform: translateX(0);
+  }
+}
