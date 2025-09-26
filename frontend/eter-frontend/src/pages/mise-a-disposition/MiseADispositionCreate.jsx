@@ -19,7 +19,7 @@ import { useNavigate } from 'react-router-dom';
 import moment from 'moment';
 import { useMisesADispositionStore } from '../../store/misesADispositionStore';
 import { demandesAPI } from '../../services/demandes';
-import { fournisseursAPI } from '../../services/fournnisseurs';
+import { fournisseursAPI } from '../../services/fournisseurs';
 import { formatCurrency } from '../../utils/formatters';
 
 const { Step } = Steps;

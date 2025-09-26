@@ -1,7 +1,7 @@
 export const formatCurrency = (value) => {
   if (!value) return '0,000';
   return new Intl.NumberFormat('fr-FR', {
-    minimumFractionDigits: 3,
+    minimumFractionDigits: 0,
     maximumFractionDigits: 3,
   }).format(value);
 };

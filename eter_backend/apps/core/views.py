@@ -34,7 +34,7 @@ from .serializers import (
     PointageJournalierSerializer, 
 )
 from .permissions import IsOwnerOrAcheteur, CanCreateDL, CanValidateDL, CanCreateEngagement
-
+from django.db.models.functions import TruncMonth
 
 class MaterielLocationViewSet(viewsets.ModelViewSet):
     """
@@ -787,8 +787,7 @@ class EngagementViewSet(viewsets.ModelViewSet):
         # Statistiques par mois
         stats_mensuelles = queryset.filter(
             date_debut__gte=date.today().replace(day=1) - timedelta(days=90)
-        ).extra(
-            select={'mois': "DATE_FORMAT(date_debut, '%%Y-%%m')"}
+        ).annotate(mois=TruncMonth('date_debut')
         ).values('mois').annotate(
             count=Count('id'),
             montant=Sum('montant_total_estime_mru')
@@ -1249,8 +1248,7 @@ class  EngagementViewSet(viewsets.ModelViewSet):
         # Statistiques par mois
         stats_mensuelles = queryset.filter(
             date_debut__gte=date.today().replace(day=1) - timedelta(days=90)
-        ).extra(
-            select={'mois': "DATE_FORMAT(date_debut, '%%Y-%%m')"}
+        ).annotate(mois=TruncMonth('date_debut')
         ).values('mois').annotate(
             count=Count('id'),
             montant=Sum('montant_total_estime_mru')

@@ -289,7 +289,7 @@ const FichePointageDetail = () => {
           </Card>
 
           {/* Calendrier des pointages */}
-          <Card title="Calendrier des pointages" style={{ marginBottom: 24 }}>
+          {/*<Card title="Calendrier des pointages" style={{ marginBottom: 24 }}>
             <Calendar
               dateCellRender={dateCellRender}
               onSelect={(date) => {
@@ -302,7 +302,7 @@ const FichePointageDetail = () => {
                 }
               }}
             />
-          </Card>
+          </Card>*/}
 
           {/* Tableau des pointages */}
           <Card title={`Pointages détaillés (${fiche.total_jours_pointes || 0} jours)`}>

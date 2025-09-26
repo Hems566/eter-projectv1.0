@@ -14,7 +14,7 @@ export const engagementsAPI = {
   fichesPointage: (id) => api.get(`/engagements/${id}/fiches-pointage/`),
   statistiques: () => api.get('/engagements/statistiques/'),
   actifs: (params = {}) => {
-    const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+    const today = new Date().toISOString().split('T')[0];
     return api.get('/engagements/', { 
       params: {
         date_fin__gte: today, // Filtrer les engagements non expirés

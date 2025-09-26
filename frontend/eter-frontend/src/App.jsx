@@ -20,12 +20,19 @@ import PointageJournalierForm from './pages/pointages/PointageJournalierForm';
 import PointageJournalierDetail from './pages/pointages/PointageJournalierDetail';
 import MiseADispositionsList from './pages/mise-a-disposition/MiseADispositionList';
 import MiseADispositionCreate from './pages/mise-a-disposition/MiseADispositionCreate';
-import ProtectedRoute from './components/common/protectedRoute';
+import ProtectedRoute from './components/common/ProtectedRoute';
 import DemandesEnAttenteValidation from './pages/demandes/DemandesEnAttenteValidation';
 import MiseADispositionDetail from './pages/mise-a-disposition/MiseADispositionDetail';
 import MiseADispositionSelectDemande from './pages/mise-a-disposition/MiseADispositionSelectDemande';
 import PointageJournalierCreate from './pages/pointages/PointageJournalierCreate';
 import './styles/globals.css';
+import FournisseursList from './pages/fournisseurs/FournisseursList';
+import FournisseurForm from './components/forms/FournisseurForm';
+import FournisseurDetail from './pages/fournisseurs/FournisseurDetail';
+import MaterielsList from './pages/materiels/MaterielsList';
+import MaterielForm from './components/forms/MaterielForm';
+import MaterielDetail from './pages/materiels/MaterielDetail';
+import EngagementForm from './components/forms/EngagmentForm';
 
 function App() {
   const { user, isAuthenticated, initAuth } = useAuthStore();
@@ -146,7 +153,7 @@ function App() {
           path="/engagements/create" 
           element={
             <ProtectedRoute resource="engagements" action="create">
-              <EngagementCreate />
+              <EngagementForm />
             </ProtectedRoute>
           } 
         />
@@ -180,6 +187,74 @@ function App() {
           element={
             <ProtectedRoute resource="pointages" action="create">
               <PointageJournalierCreate />
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* Routes des fournisseurs */}
+        <Route 
+          path="/fournisseurs" 
+          element={
+            <ProtectedRoute resource="fournisseurs">
+              <FournisseursList />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/fournisseurs/create" 
+          element={
+            <ProtectedRoute resource="fournisseurs" action="create">
+              <FournisseurForm />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/fournisseurs/:id" 
+          element={
+            <ProtectedRoute resource="fournisseurs">
+              <FournisseurDetail />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/fournisseurs/:id/edit" 
+          element={
+            <ProtectedRoute resource="fournisseurs" action="edit">
+              <FournisseurForm />
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* Routes des matériels */}
+        <Route 
+          path="/materiels" 
+          element={
+            <ProtectedRoute resource="materiels">
+              <MaterielsList />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/materiels/create" 
+          element={
+            <ProtectedRoute resource="materiels" action="create">
+              <MaterielForm />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/materiels/:id" 
+          element={
+            <ProtectedRoute resource="materiels">
+              <MaterielDetail />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/materiels/:id/edit" 
+          element={
+            <ProtectedRoute resource="materiels" action="edit">
+              <MaterielForm />
             </ProtectedRoute>
           } 
         />

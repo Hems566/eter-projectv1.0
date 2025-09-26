@@ -210,13 +210,13 @@ const FichePointageCreate = () => {
               >
                 {materielsDisponibles.map(mat => (
                   <Option key={mat.id} value={mat.id}>
-                    {/* <div>
-                      <strong>{mat.materiel_type}</strong> (Qté: {mat.quantite})
-                      <br />
+                    <div>
+                      <strong>Matériel</strong>
+                      {/* <br />
                       <small>
                         Prix: {mat.prix_unitaire_mru} MRU/{mat.type_facturation}
-                      </small>
-                    </div> */}
+                      </small> */}
+                    </div>
                   </Option>
                 ))}
               </Select>
