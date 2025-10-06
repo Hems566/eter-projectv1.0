@@ -109,7 +109,7 @@ const DemandeCreate = () => {
     if (result.success) {
       const demandeId = result.data.id;
       
-      // ✅ Si shouldSubmit est true, soumettre automatiquement après création
+      
       if (shouldSubmit && !isDraft) {
         try {
           await demandesAPI.soumettre(demandeId);
@@ -348,14 +348,6 @@ const DemandeCreate = () => {
                     loading={loading}
                   >
                     Créer la demande
-                  </Button>
-                  <Button 
-                    type="primary"
-                    icon={<SendOutlined />}
-                    onClick={() => handleSubmit(false, true)} // Créer et soumettre
-                    loading={loading}
-                  >
-                    Créer et soumettre
                   </Button>
                 </>
               ) : (

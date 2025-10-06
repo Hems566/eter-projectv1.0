@@ -32,6 +32,7 @@ import {
   ClockCircleOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import '@ant-design/v5-patch-for-react-19';
 import { useEngagementsStore } from '../../store/engagementsStore';
 import { formatCurrency, formatDate, formatDateTime } from '../../utils/formatters';
 import moment from 'moment';
@@ -39,7 +40,6 @@ import moment from 'moment';
 const { Search } = Input;
 const { Option } = Select;
 const { RangePicker } = DatePicker;
-const { confirm } = Modal;
 
 const EngagementsList = () => {
   const navigate = useNavigate();
@@ -115,7 +115,7 @@ const EngagementsList = () => {
   };
 
   const handleDelete = async (engagement) => {
-    confirm({
+    Modal.confirm({
       title: 'Supprimer l\'engagement',
       content: `Êtes-vous sûr de vouloir supprimer l'engagement "${engagement.numero}" ?`,
       okText: 'Supprimer',
@@ -201,7 +201,7 @@ const EngagementsList = () => {
       title: 'Numéro',
       dataIndex: 'numero',
       key: 'numero',
-      width: 120,
+      width: 129,
       sorter: true,
       render: (numero) => <code style={{ color: '#1890ff' }}>{numero}</code>,
     },
@@ -211,7 +211,7 @@ const EngagementsList = () => {
       render: (_, record) => (
         <div>
           <div style={{ fontWeight: 500 }}>
-            {record.mise_a_disposition?.demande_location_numero || 'N/A'}
+            {record.mise_a_disposition?.demande_location.numero || 'N/A'}
           </div>
           <div style={{ fontSize: '12px', color: '#666' }}>
             {record.mise_a_disposition?.chantier || 'Chantier non spécifié'}
@@ -224,7 +224,7 @@ const EngagementsList = () => {
       key: 'fournisseur',
       render: (_, record) => (
         <div>
-          <div>{record.mise_a_disposition?.fournisseur_nom || 'N/A'}</div>
+          <div>{record.fournisseur_nom || 'N/A'}</div>
           <div style={{ fontSize: '12px', color: '#666' }}>
             {record.mise_a_disposition?.immatriculation || 'N/A'}
           </div>
@@ -272,31 +272,15 @@ const EngagementsList = () => {
     },
     {
       title: 'Montant',
-      dataIndex: 'montant_total_calcule',
-      key: 'montant_total_calcule',
+      dataIndex: 'montant_total_estime_mru',
+      key: 'montant_total_estime_mru',
+      width: 170,
       align: 'right',
       sorter: true,
       render: (montant) => (
         <div style={{ fontWeight: 'bold', color: '#1890ff' }}>
           {formatCurrency(montant || 0)} MRU
         </div>
-      ),
-    },
-    {
-      title: 'Fiches',
-      key: 'fiches_count',
-      width: 80,
-      align: 'center',
-      render: (_, record) => (
-        <Tooltip title="Nombre de fiches de pointage">
-          <Button
-            type="link"
-            size="small"
-            onClick={() => navigate(`/pointages/fiches?engagement=${record.id}`)}
-          >
-            {record.fiches_pointage_count || 0}
-          </Button>
-        </Tooltip>
       ),
     },
     {

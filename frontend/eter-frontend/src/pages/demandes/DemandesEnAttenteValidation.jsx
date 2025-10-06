@@ -147,7 +147,9 @@ const DemandesEnAttenteValidation = () => {
       width: 100,
       align: 'center',
       render: (_, record) => (
-        <span>{record.materiels_demandes?.length || 0}</span>
+        <span>
+          {record.materiels_count || 0}
+        </span>
       ),
     },
     {
@@ -337,7 +339,7 @@ const DemandesEnAttenteValidation = () => {
             <p><strong>Demandeur:</strong> {selectedDemande.demandeur?.first_name} {selectedDemande.demandeur?.last_name}</p>
             <p><strong>Chantier:</strong> {selectedDemande.chantier}</p>
             <p><strong>Budget:</strong> {formatCurrency(selectedDemande.budget_previsionnel_mru)} MRU</p>
-            <p><strong>Matériels:</strong> {selectedDemande.materiels_demandes?.length || 0} type(s)</p>
+            <p><strong>Matériels:</strong> {selectedDemande.materiels_count || 0} type(s)</p>
           </div>
         )}
 

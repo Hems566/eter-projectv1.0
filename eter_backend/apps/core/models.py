@@ -576,6 +576,61 @@ class FichePointageMateriel(models.Model):
         # Une seule fiche par matériel par période pour un engagement
         unique_together = ['engagement', 'materiel', 'periode_debut']
     
+    def get_chantiers_utilises(self):
+        """Retourne la liste des chantiers utilisés dans cette fiche"""
+        chantiers = set()
+        
+        # Chantier principal de l'engagement
+        chantier_principal = self.engagement.mise_a_disposition.demande_location.chantier
+        chantiers.add(chantier_principal)
+        
+        # Chantiers spécifiques des pointages
+        for pointage in self.pointages_journaliers.all():
+            if pointage.chantier_pointage and pointage.chantier_pointage.strip():
+                chantiers.add(pointage.chantier_pointage.strip())
+        
+        return sorted(list(chantiers))
+    
+    def get_repartition_par_chantier(self):
+        """Retourne la répartition des heures et montants par chantier"""
+        repartition = {}
+        
+        for pointage in self.pointages_journaliers.all():
+            chantier = pointage.get_chantier_effectif()
+            
+            if chantier not in repartition:
+                repartition[chantier] = {
+                    'heures_travail': Decimal('0.00'),
+                    'heures_panne': Decimal('0.00'),
+                    'heures_arret': Decimal('0.00'),
+                    'montant': Decimal('0.000'),
+                    'jours': 0,
+                    'est_chantier_principal': chantier == self.engagement.mise_a_disposition.demande_location.chantier
+                }
+            
+            repartition[chantier]['heures_travail'] += pointage.heures_travail
+            repartition[chantier]['heures_panne'] += pointage.heures_panne
+            repartition[chantier]['heures_arret'] += pointage.heures_arret
+            repartition[chantier]['montant'] += pointage.montant_journalier
+            repartition[chantier]['jours'] += 1
+        
+        return repartition
+    
+    def get_changements_chantier_count(self):
+        """Compte le nombre de fois où le matériel a changé de chantier"""
+        return self.pointages_journaliers.filter(
+            chantier_pointage__isnull=False
+        ).exclude(
+            chantier_pointage__exact=''
+        ).exclude(
+            chantier_pointage__iexact=self.engagement.mise_a_disposition.demande_location.chantier
+        ).count()
+    
+    @property
+    def a_des_changements_chantier(self):
+        """Indique si cette fiche a des changements de chantier"""
+        return self.get_changements_chantier_count() > 0
+
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         # Recalculer le montant total basé sur les pointages journaliers
@@ -644,6 +699,13 @@ class PointageJournalier(models.Model):
         max_length=10,
         choices=JOUR_SEMAINE_CHOICES,
         verbose_name='Jour de la semaine'
+    )
+
+    chantier_pointage = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name='Chantier pointé',
+        help_text='Nom du chantier où le matériel a été utilisé ce jour. Laisser vide pour utiliser le chantier initial de la demande de location.'
     )
     
     compteur_debut = models.IntegerField(
@@ -727,7 +789,24 @@ class PointageJournalier(models.Model):
                     f'La somme des heures (travail + panne + arrêt) ne peut pas dépasser 10h. Total actuel: {total_heures}h'
                 ) 
     
+    def get_chantier_effectif(self):
+        """Retourne le chantier effectif (pointé ou celui de l'engagement)"""
+        if self.chantier_pointage and self.chantier_pointage.strip():
+            return self.chantier_pointage.strip()
+        return self.fiche_pointage.engagement.mise_a_disposition.demande_location.chantier
+    
+    def a_change_de_chantier(self):
+        """Vérifie si le matériel a changé de chantier ce jour"""
+        if not self.chantier_pointage or not self.chantier_pointage.strip():
+            return False
+        
+        chantier_principal = self.fiche_pointage.engagement.mise_a_disposition.demande_location.chantier
+        return self.chantier_pointage.strip().lower() != chantier_principal.lower()
+
     def save(self, *args, **kwargs):
+        # Nettoyer le champ chantier_pointage
+        if self.chantier_pointage:
+            self.chantier_pointage = self.chantier_pointage.strip()
         # Définir automatiquement le jour de la semaine
         if self.date_pointage:
             jours = ['LUNDI', 'MARDI', 'MERCREDI', 'JEUDI', 'VENDREDI', 'SAMEDI', 'DIMANCHE']

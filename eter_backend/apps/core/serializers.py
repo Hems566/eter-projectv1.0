@@ -712,7 +712,7 @@ class PointageJournalierSerializer(serializers.ModelSerializer):
     class Meta:
         model = PointageJournalier
         fields = [
-            'id', 'date_pointage', 'jour_semaine', 'compteur_debut', 'compteur_fin',
+            'id', 'date_pointage', 'jour_semaine', 'chantier_pointage', 'compteur_debut', 'compteur_fin',
             'heures_panne', 'heures_arret', 'heures_travail', 'consommation_carburant',
             'observations', 'montant_journalier', 'total_heures'
         ]
@@ -750,7 +750,7 @@ class PointageJournalierCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = PointageJournalier
         fields = [
-            'fiche_pointage', 'date_pointage', 'compteur_debut', 'compteur_fin',
+            'fiche_pointage', 'date_pointage', 'chantier_pointage', 'compteur_debut', 'compteur_fin',
             'heures_panne', 'heures_arret', 'heures_travail', 'consommation_carburant',
             'observations'
         ]
@@ -1020,149 +1020,3 @@ class PointageJournalierBulkCreateSerializer(serializers.Serializer):
             'pointages_created': pointages_created,
             'count': len(pointages_created)
         }
-
-
-
-# class StatistiquesSerializer(serializers.Serializer):
-#     """Serializer pour les statistiques du dashboard"""
-#     total_dl = serializers.IntegerField()
-#     dl_en_attente = serializers.IntegerField()
-#     dl_validees = serializers.IntegerField()
-#     total_engagements = serializers.IntegerField()
-#     engagements_expires = serializers.IntegerField()
-#     engagements_proche_expiration = serializers.IntegerField()
-#     total_pointages = serializers.IntegerField()
-#     pointages_avec_divergences = serializers.IntegerField()
-#     budget_total_mru = serializers.DecimalField(max_digits=20, decimal_places=3)
-    
-#     # Répartition par département
-#     dl_par_departement = serializers.DictField()
-    
-#     # Évolution temporelle
-#     dl_par_mois = serializers.ListField()
-
-
-# class ValidationActionSerializer(serializers.Serializer):
-#     """Serializer pour les actions de validation"""
-#     action = serializers.ChoiceField(choices=['valider', 'rejeter'])
-#     observations = serializers.CharField(required=False, allow_blank=True, max_length=1000)
-
-
-# class MiseADispositionCreateSerializer(serializers.Serializer):
-#     """
-#     Serializer pour créer une mise à disposition directement depuis une DL
-#     Combine la validation de la DL et la création de la mise à disposition
-#     """
-#     fournisseur_id = serializers.IntegerField()
-#     date_mise_disposition = serializers.DateField(required=False)
-#     immatriculation = serializers.CharField(max_length=50)
-#     conforme = serializers.BooleanField(default=True)
-#     observations = serializers.CharField(required=False, allow_blank=True)
-#     validation_observations = serializers.CharField(required=False, allow_blank=True, 
-#                                                   help_text="Observations pour la validation de la DL")
-    
-#     def validate_fournisseur_id(self, value):
-#         """Valider que le fournisseur existe et est actif"""
-#         try:
-#             fournisseur = Fournisseur.objects.get(id=value)
-#             if not fournisseur.actif:
-#                 raise serializers.ValidationError("Ce fournisseur n'est pas actif.")
-#             return value
-#         except Fournisseur.DoesNotExist:
-#             raise serializers.ValidationError("Fournisseur non trouvé.")
-    
-#     def validate_date_mise_disposition(self, value):
-#         """Valider que la date n'est pas dans le futur lointain"""
-#         from datetime import date, timedelta
-#         if value and value > date.today() + timedelta(days=30):
-#             raise serializers.ValidationError("La date de mise à disposition ne peut pas être trop dans le futur.")
-#         return value
-
-
-# class ConfigurationPointageSerializer(serializers.ModelSerializer):
-#     """Serializer pour les configurations de pointage"""
-#     type_materiel_display = serializers.CharField(source='get_type_materiel_display', read_only=True)
-#     repartition_type_display = serializers.CharField(source='get_repartition_type_display', read_only=True)
-    
-#     class Meta:
-#         model = ConfigurationPointage
-#         fields = [
-#             'id', 'type_materiel', 'type_materiel_display', 'repartition_type', 
-#             'repartition_type_display', 'facteur_debut_contrat', 'facteur_milieu_contrat',
-#             'facteur_fin_contrat', 'variation_hebdomadaire', 'utilise_lundi',
-#             'utilise_mardi', 'utilise_mercredi', 'utilise_jeudi', 'utilise_vendredi',
-#             'actif', 'notes', 'created_at', 'updated_at'
-#         ]
-#         read_only_fields = ['created_at', 'updated_at']
-    
-#     def validate(self, data):
-#         """Validations sur les facteurs"""
-#         facteurs = [
-#             data.get('facteur_debut_contrat', 1.0),
-#             data.get('facteur_milieu_contrat', 1.0),
-#             data.get('facteur_fin_contrat', 1.0)
-#         ]
-        
-#         for facteur in facteurs:
-#             if not (0.0 <= float(facteur) <= 2.0):
-#                 raise serializers.ValidationError("Les facteurs doivent être entre 0.0 et 2.0")
-        
-#         # Au moins un jour doit être utilisé
-#         jours = [
-#             data.get('utilise_lundi', True),
-#             data.get('utilise_mardi', True),
-#             data.get('utilise_mercredi', True),
-#             data.get('utilise_jeudi', True),
-#             data.get('utilise_vendredi', True)
-#         ]
-        
-#         if not any(jours):
-#             raise serializers.ValidationError("Au moins un jour de la semaine doit être sélectionné")
-        
-#         return data
-
-
-# class PointageArchiveSerializer(serializers.ModelSerializer):
-#     """Serializer pour les archives de pointage"""
-    
-#     class Meta:
-#         model = PointageArchive
-#         fields = [
-#             'id', 'engagement_numero', 'engagement_dates', 'materiel_designation',
-#             'materiel_type', 'chantier_initial', 'chantier_reel', 'utilisation_reelle',
-#             'montant_calcule_total', 'nombre_pointages', 'date_debut_engagement',
-#             'date_fin_engagement', 'date_archivage', 'divergences_chantier',
-#             'utilisation_moyenne_jour', 'archived_by', 'pointages_detail'
-#         ]
-#         read_only_fields = fields  # Lecture seule
-
-
-
-# class ChangementChantierMaterielSerializer(serializers.Serializer):
-#     """Serializer pour changer le chantier d'un matériel"""
-#     materiel_item_id = serializers.IntegerField()
-#     nouveau_chantier = serializers.CharField(max_length=255)
-#     date_changement = serializers.DateField(required=False)
-    
-#     def validate_materiel_item_id(self, value):
-#         """Valider que le matériel existe"""
-#         try:
-#             MaterielItem.objects.get(id=value)
-#             return value
-#         except MaterielItem.DoesNotExist:
-#             raise serializers.ValidationError("Matériel introuvable.")
-    
-#     def validate_nouveau_chantier(self, value):
-#         """Valider le nom du chantier"""
-#         if not value.strip():
-#             raise serializers.ValidationError("Le nom du chantier ne peut pas être vide.")
-#         return value.strip()
-
-
-# class ArchivageResultatSerializer(serializers.Serializer):
-#     """Serializer pour les résultats d'archivage"""
-#     success = serializers.BooleanField()
-#     engagements_archives = serializers.IntegerField(default=0)
-#     total_pointages_archives = serializers.IntegerField(default=0)
-#     detail = serializers.ListField(child=serializers.DictField(), default=list)
-#     erreur = serializers.CharField(required=False)

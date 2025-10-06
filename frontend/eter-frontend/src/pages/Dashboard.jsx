@@ -43,7 +43,7 @@ const Dashboard = () => {
       // Charger les statistiques
       const statsResponse = await demandesAPI.stats();
       setStats(statsResponse.data);
-
+      console.log(statsResponse.data);
       // Charger les demandes récentes
       const demandesResponse = await demandesAPI.list({ 
         page_size: 5, 
@@ -174,7 +174,7 @@ const Dashboard = () => {
           ))}
         </Row>
       </Card>
-
+          
       <Row gutter={24}>
         <Col span={16}>
           {/* Statistiques principales */}
@@ -183,7 +183,7 @@ const Dashboard = () => {
               <Card>
                 <Statistic
                   title="Total demandes"
-                  value={stats.total_demandes || 0}
+                  value={stats.total || 0}
                   prefix={<FileTextOutlined />}
                   valueStyle={{ color: '#3f8600' }}
                 />
@@ -193,7 +193,7 @@ const Dashboard = () => {
               <Card>
                 <Statistic
                   title="En attente"
-                  value={stats.demandes_en_attente || 0}
+                  value={stats?.par_statut?.SOUMISE.count | 0}
                   prefix={<ExclamationCircleOutlined />}
                   valueStyle={{ color: '#cf1322' }}
                 />
@@ -203,7 +203,7 @@ const Dashboard = () => {
               <Card>
                 <Statistic
                   title="Validées"
-                  value={stats.demandes_validees || 0}
+                  value={stats?.par_statut?.VALIDEE.count || 0}
                   prefix={<FileTextOutlined />}
                   valueStyle={{ color: '#1890ff' }}
                 />
@@ -213,7 +213,7 @@ const Dashboard = () => {
               <Card>
                 <Statistic
                   title="Budget total (MRU)"
-                  value={stats.budget_total || 0}
+                  value={stats?.budget_total || 0}
                   precision={0}
                   valueStyle={{ color: '#722ed1' }}
                 />
@@ -244,10 +244,10 @@ const Dashboard = () => {
 
         <Col span={8}>
           {/* Alertes et notifications */}
-          {stats.demandes_en_attente > 0 && (user?.is_acheteur || user?.is_admin) && (
+          {stats?.par_statut?.SOUMISE.count > 0 && (user?.is_acheteur || user?.is_admin) && (
             <Alert
               message="Demandes en attente"
-              description={`${stats.demandes_en_attente} demande(s) nécessite(nt) votre validation`}
+              description={`${stats?.par_statut?.SOUMISE.count} demande(s) nécessite(nt) votre validation`}
               type="warning"
               showIcon
               style={{ marginBottom: 16 }}
@@ -264,10 +264,10 @@ const Dashboard = () => {
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span>Brouillon</span>
-                <span>{stats.demandes_brouillon || 0}</span>
+                <span>{stats?.par_statut?.BROUILLON.count || 0}</span>
               </div>
               <Progress 
-                percent={((stats.demandes_brouillon || 0) / (stats.total_demandes || 1)) * 100} 
+                percent={((stats?.par_statut?.BROUILLON.count || 0) / (stats?.total || 1)) * 100} 
                 strokeColor="#d9d9d9"
                 showInfo={false}
               />
@@ -276,10 +276,10 @@ const Dashboard = () => {
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span>Soumises</span>
-                <span>{stats.demandes_en_attente || 0}</span>
+                <span>{stats?.par_statut?.SOUMISE.count || 0}</span>
               </div>
               <Progress 
-                percent={((stats.demandes_en_attente || 0) / (stats.total_demandes || 1)) * 100} 
+                percent={((stats?.par_statut?.SOUMISE.count || 0) / (stats.total || 1)) * 100} 
                 strokeColor="#faad14"
                 showInfo={false}
               />
@@ -288,10 +288,10 @@ const Dashboard = () => {
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span>Validées</span>
-                <span>{stats.demandes_validees || 0}</span>
+                <span>{stats?.par_statut?.VALIDEE.count || 0}</span>
               </div>
               <Progress 
-                percent={((stats.demandes_validees || 0) / (stats.total_demandes || 1)) * 100} 
+                percent={((stats?.par_statut?.VALIDEE.count || 0) / (stats.total || 1)) * 100} 
                 strokeColor="#52c41a"
                 showInfo={false}
               />

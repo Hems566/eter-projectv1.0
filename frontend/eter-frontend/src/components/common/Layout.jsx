@@ -141,14 +141,14 @@ const AppLayout = ({ children }) => {
           key: '/pointages/fiches',
           label: 'Fiches de pointage',
         },
-        {
-          key: '/pointages/fiches/create',
-          label: 'Nouvelle fiche',
-        },
-        {
-          key: '/pointages/journaliers/create',
-          label: 'Nouveau pointage',
-        }
+        // {
+        //   key: '/pointages/fiches/create',
+        //   label: 'Nouvelle fiche',
+        // },
+        // {
+        //   key: '/pointages/journaliers/create',
+        //   label: 'Nouveau pointage',
+        // }
       ];
 
       if (canAccessResource('pointages', 'create')) {

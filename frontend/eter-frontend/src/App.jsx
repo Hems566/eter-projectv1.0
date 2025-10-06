@@ -10,13 +10,11 @@ import DemandeCreate from './pages/demandes/DemandeCreate';
 import { useAuthStore } from './store/authStore';
 import EngagementDetail from './pages/engagements/EngagementDetail';
 import EngagementsList from './pages/engagements/EngagementsList';
-import PointagesList from './pages/pointages/PointagesList';
 import FichePointageDetail from './pages/pointages/FichePointageDetail';
 import EngagementCreate from './pages/engagements/EngagementCreate';
 import DemandeEdit from './pages/demandes/DemandeEdit';
 import FichePointageCreate from './pages/pointages/FichePointageCreate';
 import RapportsPointage from './pages/pointages/RapportPointage';
-import PointageJournalierForm from './pages/pointages/PointageJournalierForm';
 import PointageJournalierDetail from './pages/pointages/PointageJournalierDetail';
 import MiseADispositionsList from './pages/mise-a-disposition/MiseADispositionList';
 import MiseADispositionCreate from './pages/mise-a-disposition/MiseADispositionCreate';
@@ -33,6 +31,11 @@ import MaterielsList from './pages/materiels/MaterielsList';
 import MaterielForm from './components/forms/MaterielForm';
 import MaterielDetail from './pages/materiels/MaterielDetail';
 import EngagementForm from './components/forms/EngagmentForm';
+import FichesPointageList from './pages/pointages/FichesPointageList';
+import PointageJournalierEdit from './pages/pointages/PointageJournalierEdit';
+import PointagesJournaliersList from './pages/pointages/PointagesJournaliersList';
+import FichePointageEdit from './pages/pointages/FichePointageEdit';
+import EngagementsExpirants from './pages/engagements/EngagementsExpirants';
 
 function App() {
   const { user, isAuthenticated, initAuth } = useAuthStore();
@@ -141,6 +144,14 @@ function App() {
           } 
         />
         <Route 
+          path="/engagements/expirants" 
+          element={
+            <ProtectedRoute resource="engagements">
+              <EngagementsExpirants />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
           path="/engagements/:id" 
           element={
             <ProtectedRoute resource="engagements">
@@ -164,12 +175,13 @@ function App() {
           element={
             <ProtectedRoute resource="pointages">
               <Routes>
-                <Route path="/" element={<PointagesList />} />
-                <Route path="/fiches" element={<PointagesList />} />
+                <Route path="/fiches" element={<FichesPointageList />} />
                 <Route path="/fiches/:id" element={<FichePointageDetail />} />
+                <Route path="/fiches/:id/edit" element={<FichePointageEdit />} />
                 <Route path="/rapports" element={<RapportsPointage />} />
+               <Route path="/journaliers/" element={<PointagesJournaliersList />} />
                <Route path="/journaliers/:id" element={<PointageJournalierDetail />} />
-               <Route path="/journaliers/:id/edit" element={<PointageJournalierForm />} />
+               <Route path="/journaliers/:id/edit" element={<PointageJournalierEdit />} />
               </Routes>
             </ProtectedRoute>
           } 

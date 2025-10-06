@@ -27,11 +27,11 @@ import {
   MailOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import '@ant-design/v5-patch-for-react-19';
 import { useFournisseursStore } from '../../store/fournisseursStore';
 import { formatDateTime } from '../../utils/formatters';
 
 const { Search } = Input;
-const { confirm } = Modal;
 
 const FournisseursList = () => {
   const navigate = useNavigate();
@@ -87,7 +87,7 @@ const FournisseursList = () => {
   };
 
   const handleDelete = async (fournisseur) => {
-    confirm({
+    Modal.confirm({
       title: 'Supprimer le fournisseur',
       content: `Êtes-vous sûr de vouloir supprimer "${fournisseur.raison_sociale}" ?`,
       okText: 'Supprimer',
@@ -104,18 +104,28 @@ const FournisseursList = () => {
       },
     });
   };
-
   const handleToggleActif = async (fournisseur) => {
-    const result = await updateFournisseur(fournisseur.id, {
-      actif: !fournisseur.actif
-    });
+    Modal.confirm({
+      title: fournisseur.actif ? 'Désactiver le fournisseur' : 'Activer le fournisseur',
+      content: fournisseur.actif 
+        ? `Êtes-vous sûr de vouloir désactiver "${fournisseur.raison_sociale}" ?`
+        : `Êtes-vous sûr de vouloir activer "${fournisseur.raison_sociale}" ?`,
+      okText: fournisseur.actif ? 'Désactiver' : 'Activer',
+      okType: fournisseur.actif ? 'danger' : 'primary',
+      cancelText: 'Annuler',
+      onOk: async () => {  // 🔥 ICI : onOk avec 'k' minuscule
+        const result = await updateFournisseur(fournisseur.id, {
+          actif: !fournisseur.actif
+        });
     
-    if (result.success) {
-      message.success(`Fournisseur ${fournisseur.actif ? 'désactivé' : 'activé'} avec succès`);
-      loadFournisseurs();
-    } else {
-      message.error('Erreur lors de la mise à jour');
-    }
+        if (result.success) {
+          message.success(`Fournisseur ${fournisseur.actif ? 'désactivé' : 'activé'} avec succès`);
+          loadFournisseurs();
+        } else {
+          message.error('Erreur lors de la mise à jour');
+        }
+      }
+    });
   };
 
   const getActionMenu = (fournisseur) => (

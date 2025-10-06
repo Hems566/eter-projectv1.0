@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Card, 
   Descriptions, 
@@ -8,35 +8,31 @@ import {
   Row,
   Col,
   Statistic,
-  Calendar,
-  Badge,
-  Modal,
-  Form,
-  InputNumber,
-  Input,
+  Select,
   message,
-  Tag
+  Tag,
+  Divider
 } from 'antd';
 import { 
   ArrowLeftOutlined, 
   EditOutlined, 
-  PlusOutlined,
-  CalendarOutlined
+  CalendarOutlined,
+  PlusOutlined
 } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import { pointagesAPI } from '../../services/pointages';
 import { formatCurrency, formatDate, formatNumber } from '../../utils/formatters';
+import GeneratePDFButton from '../../components/pointages/GeneratePDFButton';
+import moment from 'moment';
 
-const { TextArea } = Input;
+const { Option } = Select;
 
 const FichePointageDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [fiche, setFiche] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [pointageForm] = Form.useForm();
+  const [selectedWeek, setSelectedWeek] = useState('all'); // 'all' ou 'YYYY-WW'
 
   useEffect(() => {
     loadFiche();
@@ -47,6 +43,12 @@ const FichePointageDetail = () => {
     try {
       const response = await pointagesAPI.getFiche(id);
       setFiche(response.data);
+      // Définir la semaine par défaut à la première semaine avec des pointages
+      if (response.data.pointages_journaliers?.length > 0) {
+        const firstPointage = response.data.pointages_journaliers[0];
+        const weekKey = moment(firstPointage.date_pointage).format('YYYY-[W]WW');
+        setSelectedWeek(weekKey);
+      }
     } catch (error) {
       message.error('Erreur lors du chargement de la fiche');
       navigate('/pointages');
@@ -55,65 +57,89 @@ const FichePointageDetail = () => {
     }
   };
 
-  // const handleAddPointage = async (values) => {
-  //   try {
-  //   // Rediriger vers le formulaire complet au lieu d'utiliser le modal
-  //   navigate(`/pointages/journaliers/create?fiche_id=${fiche.id}&date=${selectedDate.format('YYYY-MM-DD')}`);
-  // } catch (error) {
-  //   message.error('Erreur lors de la redirection');
-  // }
-  //   //   await pointagesAPI.createPointageJournalier({
-  //   //     fiche_pointage: fiche.id,
-  //   //     date_pointage: selectedDate.format('YYYY-MM-DD'),
-  //   //     ...values
-  //   //   });
-  //   //   message.success('Pointage ajouté avec succès');
-  //   //   setModalVisible(false);
-  //   //   pointageForm.resetFields();
-  //   //   loadFiche(); // Recharger les données
-  //   // } catch (error) {
-  //   //   message.error('Erreur lors de l\'ajout du pointage');
-  //   // }
-  // };
-
-  const getCalendarData = (date) => {
-    if (!fiche || !fiche.pointages_journaliers) return [];
+  // Fonction pour obtenir toutes les semaines de la période
+  const getWeeksInPeriod = useMemo(() => {
+    if (!fiche) return [];
     
-    const pointage = fiche.pointages_journaliers.find(p => 
-      formatDate(p.date_pointage) === date.format('YYYY-MM-DD')
-    );
+    const weeks = [];
+    const startDate = moment(fiche.periode_debut);
+    const endDate = moment(fiche.periode_fin);
+    let current = startDate.clone();
     
-    if (pointage) {
-      const badges = [];
-      if (pointage.heures_travail > 0) {
-        badges.push({ type: 'success', content: `${pointage.heures_travail}h` });
+    while (current.isSameOrBefore(endDate, 'week')) {
+      const weekKey = current.format('YYYY-[W]WW');
+      const weekStart = current.clone().startOf('week').add(1, 'day'); // Lundi
+      const weekEnd = current.clone().endOf('week').add(1, 'day'); // Dimanche
+      
+      // Vérifier si cette semaine chevauche la période
+      if (weekEnd.isSameOrAfter(startDate) && weekStart.isSameOrBefore(endDate)) {
+        weeks.push({
+          key: weekKey,
+          label: `${weekStart.format('DD/MM')} - ${weekEnd.format('DD/MM')}`,
+          year: current.format('YYYY'),
+          weekNumber: current.week()
+        });
       }
-      if (pointage.heures_panne > 0) {
-        badges.push({ type: 'warning', content: `P:${pointage.heures_panne}h` });
-      }
-      if (pointage.heures_arret > 0) {
-        badges.push({ type: 'error', content: `A:${pointage.heures_arret}h` });
-      }
-      return badges;
+      current.add(1, 'week');
     }
     
-    return [];
-  };
+    return weeks;
+  }, [fiche]);
 
-  const dateCellRender = (date) => {
-    const listData = getCalendarData(date);
-    return (
-      <div>
-        {listData.map((item, index) => (
-          <Badge key={index} status={item.type} text={item.content} />
-        ))}
-      </div>
-    );
-  };
+  // Fonction pour grouper les pointages par semaine
+  const getPointagesByWeek = useMemo(() => {
+    if (!fiche?.pointages_journaliers) return {};
+    
+    const grouped = {};
+    
+    fiche.pointages_journaliers.forEach(pointage => {
+      const weekKey = moment(pointage.date_pointage).format('YYYY-[W]WW');
+      if (!grouped[weekKey]) {
+        grouped[weekKey] = [];
+      }
+      grouped[weekKey].push(pointage);
+    });
+    
+    return grouped;
+  }, [fiche]);
 
-  const handleAddPointage = (date = null) => {
-    const dateParam = date ? `&date=${date.format('YYYY-MM-DD')}` : '';
-    navigate(`/pointages/journaliers/create?fiche_id=${fiche.id}${dateParam}`);
+  // Pointages filtrés selon la semaine sélectionnée
+  const filteredPointages = useMemo(() => {
+    if (selectedWeek === 'all') {
+      return fiche?.pointages_journaliers || [];
+    }
+    return getPointagesByWeek[selectedWeek] || [];
+  }, [selectedWeek, fiche, getPointagesByWeek]);
+
+  // Statistiques pour la semaine sélectionnée
+  const weekStats = useMemo(() => {
+    if (filteredPointages.length === 0) {
+      return {
+        jours: 0,
+        heures_travail: 0,
+        heures_panne: 0,
+        heures_arret: 0,
+        montant: 0
+      };
+    }
+    
+    return filteredPointages.reduce((acc, pointage) => ({
+      jours: acc.jours + 1,
+      heures_travail: acc.heures_travail + (pointage.heures_travail || 0),
+      heures_panne: acc.heures_panne + (pointage.heures_panne || 0),
+      heures_arret: acc.heures_arret + (pointage.heures_arret || 0),
+      montant: acc.montant + (pointage.montant_journalier || 0)
+    }), {
+      jours: 0,
+      heures_travail: 0,
+      heures_panne: 0,
+      heures_arret: 0,
+      montant: 0
+    });
+  }, [filteredPointages]);
+
+  const handleAddPointage = () => {
+    navigate(`/pointages/journaliers/create?fiche_id=${fiche.id}`);
   };
 
   const pointagesColumns = [
@@ -222,7 +248,7 @@ const FichePointageDetail = () => {
             <Space>
               <Button 
                 icon={<ArrowLeftOutlined />} 
-                onClick={() => navigate('/pointages')}
+                onClick={() => navigate('/pointages/fiches')}
               >
                 Retour
               </Button>
@@ -239,6 +265,7 @@ const FichePointageDetail = () => {
           
           <Col>
             <Space>
+               <GeneratePDFButton ficheId={id} type="primary" />
               <Button 
                 icon={<EditOutlined />}
                 onClick={() => navigate(`/pointages/fiches/${id}/edit`)}
@@ -288,37 +315,90 @@ const FichePointageDetail = () => {
             </Descriptions>
           </Card>
 
-          {/* Calendrier des pointages */}
-          {/*<Card title="Calendrier des pointages" style={{ marginBottom: 24 }}>
-            <Calendar
-              dateCellRender={dateCellRender}
-              onSelect={(date) => {
-                // Vérifier si la date est dans la période
-                if (date.isBetween(fiche.periode_debut, fiche.periode_fin, 'day', '[]')) {
-                  setSelectedDate(date);
-                  setModalVisible(true);
-                } else {
-                  message.warning('Cette date est en dehors de la période de pointage');
-                }
-              }}
-            />
-          </Card>*/}
+          {/* Sélecteur de semaine */}
+          <Card 
+            title={
+              <Space>
+                <CalendarOutlined />
+                Pointages détaillés
+              </Space>
+            }
+            extra={
+              <Select
+                value={selectedWeek}
+                onChange={setSelectedWeek}
+                style={{ width: 200 }}
+                placeholder="Sélectionner une semaine"
+              >
+                <Option value="all">Toutes les semaines</Option>
+                <Divider style={{ margin: '4px 0' }} />
+                {getWeeksInPeriod.map(week => (
+                  <Option key={week.key} value={week.key}>
+                    Semaine {week.weekNumber} ({week.label})
+                  </Option>
+                ))}
+              </Select>
+            }
+            style={{ marginBottom: 24 }}
+          >
+            {/* Statistiques de la semaine sélectionnée */}
+            {selectedWeek !== 'all' && (
+              <div style={{ marginBottom: 16, padding: '12px', backgroundColor: '#f5f5f5', borderRadius: 4 }}>
+                <Row gutter={16}>
+                  <Col span={6}>
+                    <Statistic
+                      title="Jours"
+                      value={weekStats.jours}
+                      valueStyle={{ fontSize: '14px' }}
+                    />
+                  </Col>
+                  <Col span={6}>
+                    <Statistic
+                      title="Travail"
+                      value={weekStats.heures_travail}
+                      suffix="h"
+                      valueStyle={{ color: '#52c41a', fontSize: '14px' }}
+                    />
+                  </Col>
+                  <Col span={6}>
+                    <Statistic
+                      title="Panne"
+                      value={weekStats.heures_panne}
+                      suffix="h"
+                      valueStyle={{ color: '#faad14', fontSize: '14px' }}
+                    />
+                  </Col>
+                  <Col span={6}>
+                    <Statistic
+                      title="Arrêt"
+                      value={weekStats.heures_arret}
+                      suffix="h"
+                      valueStyle={{ color: '#cf1322', fontSize: '14px' }}
+                    />
+                  </Col>
+                </Row>
+              </div>
+            )}
 
-          {/* Tableau des pointages */}
-          <Card title={`Pointages détaillés (${fiche.total_jours_pointes || 0} jours)`}>
+            {/* Tableau des pointages */}
             <Table
               columns={pointagesColumns}
-              dataSource={fiche.pointages_journaliers || []}
+              dataSource={filteredPointages}
               rowKey="id"
               pagination={false}
               size="small"
               scroll={{ x: 800 }}
+              locale={{
+                emptyText: selectedWeek === 'all' 
+                  ? 'Aucun pointage pour cette fiche' 
+                  : 'Aucun pointage pour cette semaine'
+              }}
             />
           </Card>
         </Col>
 
         <Col span={8}>
-          {/* Statistiques */}
+          {/* Statistiques globales */}
           <Card style={{ marginBottom: 24 }}>
             <Statistic
               title="Montant total calculé"
@@ -366,17 +446,49 @@ const FichePointageDetail = () => {
             </Row>
           </Card>
 
-          {/* Résumé hebdomadaire */}
+          {/* Résumé par semaine */}
           <Card title="Résumé par semaine">
-            {/* Logique pour grouper par semaine */}
-            <div style={{ fontSize: '12px', color: '#666' }}>
-              Fonctionnalité à implémenter : résumé hebdomadaire des pointages
-            </div>
+            {Object.entries(getPointagesByWeek).length === 0 ? (
+              <div style={{ fontSize: '12px', color: '#666', textAlign: 'center' }}>
+                Aucun pointage saisi
+              </div>
+            ) : (
+              <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+                {getWeeksInPeriod
+                  .filter(week => getPointagesByWeek[week.key])
+                  .map(week => {
+                    const weekData = getPointagesByWeek[week.key];
+                    const weekTotal = weekData.reduce((sum, p) => sum + (p.montant_journalier || 0), 0);
+                    const daysCount = weekData.length;
+                    
+                    return (
+                      <div 
+                        key={week.key} 
+                        style={{ 
+                          padding: '8px 0', 
+                          borderBottom: '1px solid #f0f0f0',
+                          cursor: 'pointer'
+                        }}
+                        onClick={() => setSelectedWeek(week.key)}
+                      >
+                        <div style={{ fontWeight: selectedWeek === week.key ? 'bold' : 'normal' }}>
+                          Semaine {week.weekNumber}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#666' }}>
+                          {week.label} • {daysCount} jour{daysCount > 1 ? 's' : ''}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#1890ff', fontWeight: 'bold' }}>
+                          {formatCurrency(weekTotal)} MRU
+                        </div>
+                      </div>
+                    );
+                  })
+                }
+              </div>
+            )}
           </Card>
         </Col>
       </Row>
-
-      
     </div>
   );
 };

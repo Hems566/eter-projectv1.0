@@ -24,6 +24,8 @@ export const pointagesAPI = {
   
   getEngagementsActifs: () => api.get('/engagements/'),
 
+  getFicheForPDF: (id) => api.get(`/fiches-pointage/${id}/pdf_data/`),
+
   // Vérifications
   listVerifications: (params = {}) => api.get('/verification-pointage/', { params }),
   createVerification: (data) => api.post('/verification-pointage/', data),

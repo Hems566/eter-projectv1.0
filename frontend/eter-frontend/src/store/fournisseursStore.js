@@ -18,6 +18,7 @@ export const useFournisseursStore = create((set, get) => ({
     set({ loading: true, error: null });
     try {
       const response = await fournisseursAPI.list(params);
+      console.log('Raw API response:', response.data);
       set({
         fournisseurs: response.data.results || response.data,
         pagination: response.data.count ? {

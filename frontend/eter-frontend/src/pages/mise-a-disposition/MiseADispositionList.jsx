@@ -11,7 +11,10 @@ import {
   Row,
   Col,
   Statistic,
-  Tooltip
+  Dropdown,
+  Tooltip,
+  Menu,
+  Modal
 } from 'antd';
 import { 
   PlusOutlined, 
@@ -19,8 +22,11 @@ import {
   EditOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
-  FileTextOutlined
+  FileTextOutlined,
+  MoreOutlined,
+  DeleteOutlined
 } from '@ant-design/icons';
+import '@ant-design/v5-patch-for-react-19';
 import { useNavigate } from 'react-router-dom';
 import { useMisesADispositionStore } from '../../store/misesADispositionStore';
 import { formatCurrency, formatDate, getStatusColor } from '../../utils/formatters';
@@ -59,7 +65,6 @@ const MiseADispositionsList = () => {
 
   useEffect(() => {
   console.log('MisesADisposition from store:', misesADisposition);
-  console.log('First item structure:', misesADisposition[0]);
 }, [misesADisposition]);
 
   const loadData = (params = {}) => {
@@ -90,6 +95,59 @@ const MiseADispositionsList = () => {
     setFilters(newFilters);
     loadData({ ...newFilters, page: 1 });
   };
+
+  const handleDelete = async (record) => {
+    Modal.confirm({
+      title: 'Supprimer la mise à disposition',
+      content: `Êtes-vous sûr de vouloir supprimer la mise à disposition "${record.demande_location_numero}" ?`,
+      okText: 'Supprimer',
+      okType: 'danger',
+      cancelText: 'Annuler',
+      onOk: async () => {
+        try {
+          await misesADispositionAPI.delete(record.id);
+          message.success('Mise à disposition supprimée avec succès');
+          loadData(); // Recharger la liste
+        } catch (error) {
+          message.error('Erreur lors de la suppression');
+          console.error('Erreur de suppression:', error);
+        }
+      },
+    });
+  };
+
+  const getActionMenu = (record) => (
+    <Menu>
+      <Menu.Item
+        key="view"
+        icon={<EyeOutlined />}
+        onClick={() => navigate(`/mises-a-disposition/${record.id}`)}
+      >
+        Voir détail
+      </Menu.Item>
+      
+      {canCreate(record) && (
+        <>
+          <Menu.Item
+            key="edit"
+            icon={<EditOutlined />}
+            onClick={() => navigate(`/mises-a-disposition/${record.id}/edit`)}
+          >
+            Modifier
+          </Menu.Item>
+          <Menu.Divider />
+          <Menu.Item
+            key="delete"
+            icon={<DeleteOutlined />}
+            danger
+            onClick={() => handleDelete(record)}
+          >
+            Supprimer
+          </Menu.Item>
+        </>
+      )}
+    </Menu>
+  );
 
   const columns = [
     {
@@ -188,26 +246,18 @@ const MiseADispositionsList = () => {
     {
       title: 'Actions',
       key: 'actions',
-      width: 120,
+      width: 85,
       fixed: 'right',
       render: (_, record) => (
-        <Space>
-          <Button
-            type="primary"
-            icon={<EyeOutlined />}
-            size="small"
-            onClick={() => navigate(`/mises-a-disposition/${record.id}`)}
-          />
-          {canEdit(record) && (
-            <Button
-              icon={<EditOutlined />}
-              size="small"
-              onClick={() => navigate(`/mises-a-disposition/${record.id}/edit`)}
-            />
-          )}
-        </Space>
+        <Dropdown
+          overlay={getActionMenu(record)}
+          trigger={['click']}
+          placement="bottomRight"
+        >
+          <Button type="text" icon={<MoreOutlined />} />
+        </Dropdown>
       ),
-    },
+    }
   ];
 
   const canEdit = (record) => {
@@ -224,7 +274,7 @@ const MiseADispositionsList = () => {
     total: misesADisposition.length,
     conformes: misesADisposition.filter(mad => mad.conforme).length,
     non_conformes: misesADisposition.filter(mad => !mad.conforme).length,
-    avec_engagement: misesADisposition.filter(mad => mad.engagement).length,
+    avec_engagement: misesADisposition.filter(mad => mad.a_engagement).length,
   };
 
   return (
@@ -244,7 +294,7 @@ const MiseADispositionsList = () => {
                 <Button
                   type="primary"
                   icon={<PlusOutlined />}
-                  onClick={() => navigate('/mises-a-disposition/select-demande')}
+                  onClick={() => navigate('/mises-a-disposition/create')}
                 >
                   Nouvelle MAD
                 </Button>

@@ -104,7 +104,7 @@ const PointageJournalierDetail = () => {
                   if (hasFicheData && fichePointage.id) {
                     navigate(`/pointages/fiches/${fichePointage.id}`);
                   } else {
-                    navigate('/pointages');
+                    navigate('/pointages/fiches');
                   }
                 }}
               >

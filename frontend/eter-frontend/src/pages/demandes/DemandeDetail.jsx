@@ -108,12 +108,12 @@ const DemandeDetail = () => {
   const materielsColumns = [
     {
       title: 'Type de matériel',
-      dataIndex: ['materiel', 'type_materiel'],
-      key: 'type_materiel',
+      dataIndex:'materiel_type',
+      key: 'materiel_type',
     },
     {
       title: 'Type facturation',
-      dataIndex: ['materiel', 'type_facturation'],
+      dataIndex: 'type_facturation',
       key: 'type_facturation',
       render: (type) => {
         const colors = {
@@ -131,7 +131,7 @@ const DemandeDetail = () => {
     },
     {
       title: 'Prix unitaire (MRU)',
-      dataIndex: ['materiel', 'prix_unitaire_mru'],
+      dataIndex: 'prix_unitaire_mru',
       key: 'prix_unitaire',
       align: 'right',
       render: (prix) => formatCurrency(prix),
@@ -349,7 +349,7 @@ const DemandeDetail = () => {
           <Card style={{ marginBottom: 24 }}>
             <Statistic
               title="Budget total estimé"
-              value={demande.budget_previsionnel_mru}
+              value={formatCurrency(demande.budget_previsionnel_mru)}
               suffix="MRU"
               precision={3}
               valueStyle={{ color: '#3f8600' }}

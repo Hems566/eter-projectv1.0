@@ -1,3 +1,4 @@
+// pages/pointages/PointageJournalierCreate.jsx - Version améliorée
 import React, { useState, useEffect } from 'react';
 import { 
   Form, 
@@ -9,10 +10,10 @@ import {
   message,
   Row,
   Col,
-  Select,
   Descriptions,
   InputNumber,
-  Divider
+  Divider,
+  Alert
 } from 'antd';
 import { ArrowLeftOutlined, SaveOutlined, CalendarOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -20,8 +21,8 @@ import moment from 'moment';
 import { usePointagesStore } from '../../store/pointagesStore';
 import { pointagesAPI } from '../../services/pointages';
 import { formatCurrency, formatDate } from '../../utils/formatters';
+import ChantierInput from '../../components/common/ChantierInput';
 
-const { Option } = Select;
 const { TextArea } = Input;
 
 const PointageJournalierCreate = () => {
@@ -31,6 +32,8 @@ const PointageJournalierCreate = () => {
   const [form] = Form.useForm();
   const [fichePointage, setFichePointage] = useState(null);
   const [loadingFiche, setLoadingFiche] = useState(false);
+  const [chantierPointage, setChantierPointage] = useState('');
+  const [showChantierAlert, setShowChantierAlert] = useState(false);
 
   const ficheId = searchParams.get('fiche_id');
 
@@ -39,7 +42,7 @@ const PointageJournalierCreate = () => {
       loadFichePointage();
     } else {
       message.error('ID de fiche de pointage manquant');
-      navigate('/fiches-pointage');
+      navigate('/pointages/fiches');
     }
   }, [ficheId]);
 
@@ -62,83 +65,72 @@ const PointageJournalierCreate = () => {
     } catch (error) {
       console.error('Erreur chargement fiche:', error);
       message.error('Erreur lors du chargement de la fiche de pointage');
-      navigate('/fiches-pointage');
+      navigate('/pointages/fiches');
     } finally {
       setLoadingFiche(false);
     }
   };
 
-  // Dans PointageJournalierCreate.jsx
-const handleSubmit = async (values) => {
-  try {
-    if (!ficheId) {
-      message.error('ID de fiche manquant');
-      return;
-    }
+  const handleSubmit = async (values) => {
+    try {
+      if (!ficheId) {
+        message.error('ID de fiche manquant');
+        return;
+      }
 
-    const pointageData = {
-      fiche_pointage: parseInt(ficheId),
-      date_pointage: values.date_pointage.format('YYYY-MM-DD'),
-      // ✅ Compteurs en entiers (selon votre modèle)
-      compteur_debut: values.compteur_debut ? parseInt(values.compteur_debut) : null,
-      compteur_fin: values.compteur_fin ? parseInt(values.compteur_fin) : null,
-      // ✅ Heures en décimaux avec 2 décimales max
-      heures_travail: values.heures_travail ? parseFloat(values.heures_travail).toFixed(2) : "0.00",
-      heures_panne: values.heures_panne ? parseFloat(values.heures_panne).toFixed(2) : "0.00",
-      heures_arret: values.heures_arret ? parseFloat(values.heures_arret).toFixed(2) : "0.00",
-      consommation_carburant: values.consommation_carburant ? parseFloat(values.consommation_carburant).toFixed(2) : "0.00",
-      observations: values.observations?.trim() || ''
-    };
+      const pointageData = {
+        fiche_pointage: parseInt(ficheId),
+        date_pointage: values.date_pointage.format('YYYY-MM-DD'),
+        compteur_debut: values.compteur_debut ? parseInt(values.compteur_debut) : null,
+        compteur_fin: values.compteur_fin ? parseInt(values.compteur_fin) : null,
+        heures_travail: values.heures_travail ? parseFloat(values.heures_travail).toFixed(2) : "0.00",
+        heures_panne: values.heures_panne ? parseFloat(values.heures_panne).toFixed(2) : "0.00",
+        heures_arret: values.heures_arret ? parseFloat(values.heures_arret).toFixed(2) : "0.00",
+        consommation_carburant: values.consommation_carburant ? parseFloat(values.consommation_carburant).toFixed(2) : "0.00",
+        observations: values.observations?.trim() || '',
+        // 🔥 NOUVEAU: Ajouter le chantier pointage
+        chantier_pointage: chantierPointage?.trim() || ''
+      };
 
-    console.log('📤 Données finales envoyées:', pointageData);
-    console.log('📤 Types:', {
-      fiche_pointage: typeof pointageData.fiche_pointage,
-      compteur_debut: typeof pointageData.compteur_debut,
-      heures_travail: typeof pointageData.heures_travail
-    });
+      console.log('📤 Données finales envoyées:', pointageData);
 
-    const result = await createPointageJournalier(pointageData);
-    
-    if (result.success) {
-      message.success('Pointage journalier créé avec succès');
-      navigate(`/fiches-pointage/${ficheId}`);
-    } else {
-      console.error('❌ Erreur création:', result.error);
-      // ✅ Afficher les erreurs détaillées
-      if (result.error && typeof result.error === 'object') {
-        Object.entries(result.error).forEach(([field, errors]) => {
-          const errorMsg = Array.isArray(errors) ? errors.join(', ') : errors;
-          message.error(`${field}: ${errorMsg}`);
-        });
+      const result = await createPointageJournalier(pointageData);
+      
+      if (result.success) {
+        message.success('Pointage journalier créé avec succès');
+        navigate(`/pointages/fiches/${ficheId}`);
       } else {
-        message.error(result.error?.message || 'Erreur lors de la création du pointage');
+        console.error('❌ Erreur création:', result.error);
+        if (result.error && typeof result.error === 'object') {
+          Object.entries(result.error).forEach(([field, errors]) => {
+            const errorMsg = Array.isArray(errors) ? errors.join(', ') : errors;
+            message.error(`${field}: ${errorMsg}`);
+          });
+        } else {
+          message.error(result.error?.message || 'Erreur lors de la création du pointage');
+        }
       }
-    }
-  } catch (error) {
-    console.error('❌ Erreur complète:', error);
-    if (error.response?.data) {
-      console.error('❌ Réponse serveur:', error.response.data);
-      // ✅ Afficher les erreurs du serveur
-      if (typeof error.response.data === 'object') {
-        Object.entries(error.response.data).forEach(([field, errors]) => {
-          const errorMsg = Array.isArray(errors) ? errors.join(', ') : errors;
-          message.error(`${field}: ${errorMsg}`);
-        });
+    } catch (error) {
+      console.error('❌ Erreur complète:', error);
+      if (error.response?.data) {
+        console.error('❌ Réponse serveur:', error.response.data);
+        if (typeof error.response.data === 'object') {
+          Object.entries(error.response.data).forEach(([field, errors]) => {
+            const errorMsg = Array.isArray(errors) ? errors.join(', ') : errors;
+            message.error(`${field}: ${errorMsg}`);
+          });
+        }
       }
+      message.error('Erreur lors de la création');
     }
-    message.error('Erreur lors de la création');
-  }
-};
+  };
 
-
-  // Calculer le montant automatiquement
   const handleValuesChange = (changedValues, allValues) => {
     if (['heures_travail', 'heures_panne', 'heures_arret'].some(field => field in changedValues)) {
       const heuresTravail = allValues.heures_travail || 0;
       const heuresPanne = allValues.heures_panne || 0;
       const heuresArret = allValues.heures_arret || 0;
       
-      // Calcul basé sur le prix unitaire du matériel (si disponible)
       if (fichePointage?.materiel?.materiel?.prix_unitaire_mru) {
         const prixUnitaire = fichePointage.materiel.materiel.prix_unitaire_mru;
         const montantEstime = (heuresTravail * prixUnitaire) + 
@@ -152,29 +144,37 @@ const handleSubmit = async (values) => {
     }
   };
 
-  // Validation de la date
-  const disabledDate = (current) => {
-  if (!fichePointage || !current) return true;
-  
-  try {
-    // ✅ Convertir toutes les dates en objets Moment
-    const currentDate = moment(current);
-    const debut = moment(fichePointage.periode_debut);
-    const fin = moment(fichePointage.periode_fin);
+  const handleChantierChange = (value) => {
+    setChantierPointage(value);
     
-    // ✅ Vérifier que les dates sont valides
-    if (!debut.isValid() || !fin.isValid() || !currentDate.isValid()) {
+    // Vérifier si c'est un changement de chantier
+    if (value && fichePointage) {
+      const chantierPrincipal = fichePointage.engagement?.mise_a_disposition?.demande_location?.chantier;
+      const isDifferent = value.trim().toLowerCase() !== chantierPrincipal?.toLowerCase();
+      setShowChantierAlert(isDifferent);
+    } else {
+      setShowChantierAlert(false);
+    }
+  };
+
+  const disabledDate = (current) => {
+    if (!fichePointage || !current) return true;
+    
+    try {
+      const currentDate = moment(current);
+      const debut = moment(fichePointage.periode_debut);
+      const fin = moment(fichePointage.periode_fin);
+      
+      if (!debut.isValid() || !fin.isValid() || !currentDate.isValid()) {
+        return true;
+      }
+      
+      return !currentDate.isBetween(debut, fin, 'day', '[]');
+    } catch (error) {
+      console.error('Erreur dans disabledDate:', error);
       return true;
     }
-    
-    // ✅ Utiliser isBetween avec les paramètres corrects
-    return !currentDate.isBetween(debut, fin, 'day', '[]');
-  } catch (error) {
-    console.error('Erreur dans disabledDate:', error);
-    return true; // En cas d'erreur, désactiver la date
-  }
-};
-
+  };
 
   if (loadingFiche || !fichePointage) {
     return (
@@ -195,7 +195,7 @@ const handleSubmit = async (values) => {
             <Space>
               <Button 
                 icon={<ArrowLeftOutlined />} 
-                onClick={() => navigate(`/fiches-pointage/${ficheId}`)}
+                onClick={() => navigate(`/pointages/fiches/${ficheId}`)}
               >
                 Retour à la fiche
               </Button>
@@ -237,7 +237,34 @@ const handleSubmit = async (values) => {
                     />
                   </Form.Item>
                 </Col>
+                
+                <Col span={12}>
+                  {/* 🔥 NOUVEAU: Champ chantier avec autocomplétion */}
+                  <Form.Item
+                    label="Chantier (optionnel)"
+                    help="Laisser vide pour utiliser le chantier principal de l'engagement"
+                  >
+                    <ChantierInput
+                      value={chantierPointage}
+                      onChange={handleChantierChange}
+                      ficheId={ficheId}
+                      chantierPrincipal={fichePointage.engagement?.mise_a_disposition?.demande_location?.chantier}
+                      placeholder="Saisir un autre chantier si nécessaire"
+                    />
+                  </Form.Item>
+                </Col>
               </Row>
+
+              {/* 🔥 Alerte changement de chantier */}
+              {showChantierAlert && (
+                <Alert
+                  message="Changement de chantier détecté"
+                  description={`Le matériel sera pointé sur "${chantierPointage}" au lieu du chantier principal "${fichePointage.engagement?.mise_a_disposition?.demande_location?.chantier}"`}
+                  type="info"
+                  showIcon
+                  style={{ marginBottom: 16 }}
+                />
+              )}
 
               <Divider orientation="left">Compteurs</Divider>
               
@@ -392,7 +419,7 @@ const handleSubmit = async (values) => {
                     Créer le pointage
                   </Button>
                   <Button 
-                    onClick={() => navigate(`/fiches-pointage/${ficheId}`)}
+                    onClick={() => navigate(`/pointages/fiches/${ficheId}`)}
                   >
                     Annuler
                   </Button>
@@ -418,11 +445,14 @@ const handleSubmit = async (values) => {
                   {fichePointage.engagement?.numero}
                 </Button>
               </Descriptions.Item>
+              <Descriptions.Item label="Chantier principal">
+                {fichePointage.engagement?.mise_a_disposition?.demande_location?.chantier}
+              </Descriptions.Item>
               <Descriptions.Item label="Matériel">
                 {fichePointage.materiel?.materiel?.type_materiel}
               </Descriptions.Item>
               <Descriptions.Item label="Immatriculation">
-                {fichePointage.immatriculation}
+                {fichePointage.immatriculation || 'Non renseignée'}
               </Descriptions.Item>
               <Descriptions.Item label="Période">
                 {formatDate(fichePointage.periode_debut)} - {formatDate(fichePointage.periode_fin)}
@@ -459,7 +489,7 @@ const handleSubmit = async (values) => {
                 <Button 
                   type="link" 
                   size="small"
-                  onClick={() => navigate(`/fiches-pointage/${ficheId}`)}
+                  onClick={() => navigate(`/pointages/fiches/${ficheId}`)}
                 >
                   Voir tous les pointages
                 </Button>

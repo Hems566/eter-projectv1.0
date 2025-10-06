@@ -9,7 +9,7 @@ export const engagementsAPI = {
   
   // Actions spécifiques
   misesADispositionDisponibles: () => api.get('/engagements/mises_a_disposition_disponibles/'),
-  expirantBientot: () => api.get('/engagements/expirant-bientot/'),
+  expirantBientot: () => api.get('/engagements/expirant_bientot/'),
   expires: () => api.get('/engagements/expires/'),
   fichesPointage: (id) => api.get(`/engagements/${id}/fiches-pointage/`),
   statistiques: () => api.get('/engagements/statistiques/'),

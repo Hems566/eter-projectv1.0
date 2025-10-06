@@ -134,7 +134,8 @@ const FichePointageCreate = () => {
       
       if (result.success) {
         message.success('Fiche de pointage créée avec succès');
-        navigate(`/pointages/fiches/${result.data.id}`);
+        navigate(`/pointages/fiches`)
+        // navigate(`/pointages/fiches/${result.data.id}`);
       } else {
         console.error('Erreur création:', result.error);
         message.error('Erreur lors de la création de la fiche');
@@ -363,7 +364,7 @@ const FichePointageCreate = () => {
             <Space>
               <Button 
                 icon={<ArrowLeftOutlined />} 
-                onClick={() => navigate('/pointages')}
+                onClick={() => navigate('/pointages/fiches')}
               >
                 Retour
               </Button>

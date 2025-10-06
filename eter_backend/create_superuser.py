@@ -48,27 +48,27 @@ def create_test_users():
     """
     test_users = [
         {
-            'username': 'demandeur_dtx',
+            'username': 'd_dtx',
             'email': 'fst44588@gmail.com',
-            'password': 'test2024!',
+            'password': 'eter',
             'first_name': 'Ahmed',
             'last_name': 'Bennani',
             'role': 'DEMANDEUR',
             'departement': 'DTX',
         },
         {
-            'username': 'demandeur_dal',
+            'username': 'd_dal',
             'email': 'michelpen856@gmail.com',
-            'password': 'test2024!',
+            'password': 'eter',
             'first_name': 'Fatma',
             'last_name': 'Trabelsi',
             'role': 'DEMANDEUR',
             'departement': 'DAL',
         },
         {
-            'username': 'acheteur_dal',
+            'username': 'a_dal',
             'email': 'testr77y@gmail.com',
-            'password': 'test2024!',
+            'password': 'eter',
             'first_name': 'Mohamed',
             'last_name': 'Khemiri',
             'role': 'ACHETEUR',

@@ -30,12 +30,12 @@ import {
   FilterOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import '@ant-design/v5-patch-for-react-19';
 import { useMaterielsStore } from '../../store/materielsStore';
 import { formatCurrency } from '../../utils/formatters';
 
 const { Search } = Input;
 const { Option } = Select;
-const { confirm } = Modal;
 
 // Constantes pour les types de matériel
 const TYPE_MATERIEL_OPTIONS = [
@@ -117,7 +117,7 @@ const MaterielsList = () => {
   };
 
   const handleDelete = async (materiel) => {
-    confirm({
+    Modal.confirm({
       title: 'Supprimer le matériel',
       content: `Êtes-vous sûr de vouloir supprimer "${materiel.type_materiel}" ?`,
       okText: 'Supprimer',

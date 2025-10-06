@@ -21,6 +21,7 @@ import { useMisesADispositionStore } from '../../store/misesADispositionStore';
 import { demandesAPI } from '../../services/demandes';
 import { fournisseursAPI } from '../../services/fournisseurs';
 import { formatCurrency } from '../../utils/formatters';
+import { useFournisseursStore } from '../../store/fournisseursStore';
 
 const { Step } = Steps;
 const { Option } = Select;
@@ -28,12 +29,15 @@ const { Option } = Select;
 const MiseADispositionCreate = () => {
   const navigate = useNavigate();
   const { createMiseADisposition, loading } = useMisesADispositionStore();
+  const { searchFournisseursActifs } = useFournisseursStore();
   const [form] = Form.useForm();
   const [currentStep, setCurrentStep] = useState(0);
   
   // États pour les données
   const [demandesValidees, setDemandesValidees] = useState([]);
-  const [fournisseurs, setFournisseurs] = useState([]);
+  const [selectedFournisseur, setSelectedFournisseur] = useState(null);
+  const [fournisseurOptions, setFournisseurOptions] = useState([]);
+  const [fournisseurLoading, setFournisseurLoading] = useState(false);
   const [selectedDemande, setSelectedDemande] = useState(null);
   
   // États de chargement
@@ -61,7 +65,6 @@ const MiseADispositionCreate = () => {
 
   useEffect(() => {
     loadDemandesValidees();
-    loadFournisseurs();
   }, []);
 
   // ✅ Charger les demandes avec statut VALIDEE
@@ -99,20 +102,44 @@ const MiseADispositionCreate = () => {
     }
   };
 
-  const loadFournisseurs = async () => {
-    try {
-      setLoadingFournisseurs(true);
-      const response = await fournisseursAPI.actifs();
-      const data = response.data.results || response.data || [];
-      setFournisseurs(data);
-      console.log('Fournisseurs chargés:', data);
-    } catch (error) {
-      console.error('Erreur chargement fournisseurs:', error);
-      message.error('Erreur lors du chargement des fournisseurs');
-      setFournisseurs([]);
-    } finally {
-      setLoadingFournisseurs(false);
-    }
+  // Recherche dynamique des fournisseurs
+  const handleFournisseurSearch = async (searchValue) => {
+  if (!searchValue.trim()) {
+  setFournisseurOptions([]);
+  return;
+  }
+
+  setFournisseurLoading(true);
+  const result = await searchFournisseursActifs(searchValue.trim());
+  setFournisseurLoading(false);
+
+  if (result.success) {
+  const data = result.data.results || result.data || [];
+  const options = data.map(f => ({
+  label: `${f.raison_sociale} (NIF: ${f.nif || 'N/A'})`,
+  value: f.id,
+  nif: f.nif,
+  telephone: f.telephone,
+  raison_sociale: f.raison_sociale
+  }));
+  setFournisseurOptions(options);
+  } else {
+  setFournisseurOptions([]);
+  message.warning('Aucun fournisseur trouvé');
+  }
+  };
+
+  const handleFournisseurChange = (value, option) => {
+  if (option && typeof option === 'object') {
+  setSelectedFournisseur({
+  id: value,
+  raison_sociale: option.raison_sociale,
+  nif: option.nif,
+  telephone: option.telephone
+  });
+  } else {
+  setSelectedFournisseur(null);
+  }
   };
 
   const handleDemandeChange = (demandeId) => {
@@ -257,49 +284,26 @@ const MiseADispositionCreate = () => {
 
       case 1:
         return (
-          <Card title="Sélection du fournisseur">
-            <Form.Item
-              name="fournisseur_id"
-              label="Fournisseur"
-              rules={[{ required: true, message: 'Le fournisseur est obligatoire' }]}
-            >
-              <Select
-                placeholder="Sélectionner un fournisseur"
-                size="large"
-                loading={loadingFournisseurs}
-                showSearch
-                optionFilterProp="children"
-                filterOption={(input, option) => {
-                  const text = option.children?.toString() || '';
-                  return text.toLowerCase().indexOf(input.toLowerCase()) >= 0;
-                }}
-                notFoundContent={loadingFournisseurs ? "Chargement..." : "Aucun fournisseur trouvé"}
-              >
-                {fournisseurs.map(fournisseur => (
-                  <Option key={fournisseur.id} value={fournisseur.id}>
-                    <div>
-                      <strong>{fournisseur.raison_sociale}</strong>
-                      <br />
-                      <small>NIF: {fournisseur.nif} | Tél: {fournisseur.telephone || 'N/A'}</small>
-                    </div>
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-
-            {fournisseurs.length === 0 && !loadingFournisseurs && (
-              <div style={{ textAlign: 'center', color: '#999', padding: '40px' }}>
-                <p>Aucun fournisseur actif trouvé</p>
-                <Button 
-                  type="primary" 
-                  onClick={() => navigate('/fournisseurs')}
-                >
-                  Gérer les fournisseurs
-                </Button>
-              </div>
-            )}
-          </Card>
-        );
+        <Card title="Sélection du fournisseur">
+        <Form.Item
+        name="fournisseur_id"
+        label="Fournisseur"
+        rules={[{ required: true, message: 'Le fournisseur est obligatoire' }]}
+        >
+        <Select
+        placeholder="Tapez pour rechercher un fournisseur (nom ou NIF)"
+        size="large"
+        showSearch
+        filterOption={false} // 🔥 Pas de filtrage côté client
+        onSearch={handleFournisseurSearch}
+        onChange={handleFournisseurChange}
+        loading={fournisseurLoading}
+        options={fournisseurOptions}
+        notFoundContent={fournisseurLoading ? "Recherche..." : "Aucun résultat"}
+        />
+        </Form.Item>
+        </Card>
+      );
 
       case 2:
         return (
@@ -382,7 +386,10 @@ const MiseADispositionCreate = () => {
                 <h4>Fournisseur et détails</h4>
                 <Descriptions bordered size="small" column={2} style={{ marginBottom: 24 }}>
                   <Descriptions.Item label="Fournisseur">
-                    {fournisseurs.find(f => f.id === form.getFieldValue('fournisseur_id'))?.raison_sociale || 'Non sélectionné'}
+                    {selectedFournisseur?.raison_sociale || 'Non sélectionné'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="NIF">
+                    {selectedFournisseur?.nif || 'N/A'}
                   </Descriptions.Item>
                   <Descriptions.Item label="Date MAD">
                     {form.getFieldValue('date_mise_disposition')?.format('DD/MM/YYYY') || 'Non définie'}
@@ -505,8 +512,7 @@ const MiseADispositionCreate = () => {
                   type="primary" 
                   onClick={handleNext}
                   disabled={
-                    (currentStep === 0 && demandesValidees.length === 0) ||
-                    (currentStep === 1 && fournisseurs.length === 0)
+                    (currentStep === 0 && demandesValidees.length === 0)
                   }
                 >
                   Suivant

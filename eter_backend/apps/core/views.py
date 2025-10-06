@@ -6,6 +6,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q, Count, Sum
 from django.utils import timezone
 from datetime import date, timedelta
+from django.db.models.functions import TruncMonth
 
 from .models import (
     Engagement, FichePointageMateriel, FicheVerificationPointage, Fournisseur, DemandeLocation, MaterielLocation, MiseADisposition, PointageJournalier,
@@ -34,7 +35,7 @@ from .serializers import (
     PointageJournalierSerializer, 
 )
 from .permissions import IsOwnerOrAcheteur, CanCreateDL, CanValidateDL, CanCreateEngagement
-from django.db.models.functions import TruncMonth
+
 
 class MaterielLocationViewSet(viewsets.ModelViewSet):
     """
@@ -527,7 +528,7 @@ class MiseADispositionViewSet(viewsets.ModelViewSet):
         
         # Statistiques par mois (3 derniers mois)
         from django.db.models import Count
-        from django.db.models.functions import TruncMonth
+        
         
         stats_mensuelles = queryset.filter(
             date_mise_disposition__gte=date.today().replace(day=1) - timezone.timedelta(days=90)
@@ -1248,7 +1249,8 @@ class  EngagementViewSet(viewsets.ModelViewSet):
         # Statistiques par mois
         stats_mensuelles = queryset.filter(
             date_debut__gte=date.today().replace(day=1) - timedelta(days=90)
-        ).annotate(mois=TruncMonth('date_debut')
+        ).annotate(
+            mois=TruncMonth('date_debut')
         ).values('mois').annotate(
             count=Count('id'),
             montant=Sum('montant_total_estime_mru')
@@ -1329,6 +1331,118 @@ class FichePointageMaterielViewSet(viewsets.ModelViewSet):
             'pointages': serializer.data
         })
     
+    @action(detail=True, methods=['get'])
+    def pdf_data(self, request, pk=None):
+        """
+        Endpoint: GET /api/fiches-pointage/{id}/pdf_data/
+        Retourner toutes les données nécessaires pour générer le PDF
+        """
+        fiche = self.get_object()
+        
+        # Récupérer les pointages journaliers ordonnés par date
+        pointages = fiche.pointages_journaliers.all().order_by('date_pointage')
+        
+        # Calculer les totaux
+        totaux = pointages.aggregate(
+            total_heures_travail=Sum('heures_travail'),
+            total_heures_panne=Sum('heures_panne'),
+            total_heures_arret=Sum('heures_arret'),
+            total_carburant=Sum('consommation_carburant'),
+            total_montant=Sum('montant_journalier')
+        )
+        
+        # Compteurs début et fin
+        premier_pointage = pointages.filter(compteur_debut__isnull=False).first()
+        dernier_pointage = pointages.filter(compteur_fin__isnull=False).last()
+        
+        # Préparer les données pour le PDF
+        pdf_data = {
+            'fiche': {
+                'id': fiche.id,
+                'numero_fiche': fiche.numero_fiche,
+                'immatriculation': fiche.engagement.mise_a_disposition.immatriculation,
+                'periode_debut': fiche.periode_debut,
+                'periode_fin': fiche.periode_fin,
+                'created_at': fiche.created_at,
+                'materiel_type': fiche.materiel.materiel.type_materiel if fiche.materiel and fiche.materiel.materiel else '',
+                'materiel_quantite': fiche.materiel.quantite if fiche.materiel else 0,
+                'prix_unitaire': float(fiche.materiel.materiel.prix_unitaire_mru) if fiche.materiel and fiche.materiel.materiel else 0,
+                # 🔥 NOUVEAU: Informations sur les chantiers
+                'chantier_principal': fiche.engagement.mise_a_disposition.demande_location.chantier,
+                'chantiers_utilises': fiche.get_chantiers_utilises(),
+                'repartition_par_chantier': fiche.get_repartition_par_chantier(),
+                'a_des_changements_chantier': fiche.a_des_changements_chantier,
+                'changements_chantier_count': fiche.get_changements_chantier_count(),
+            },
+            
+            'engagement': {
+                'id': fiche.engagement.id,
+                'numero': fiche.engagement.numero,
+                'chantier': fiche.engagement.mise_a_disposition.demande_location.chantier,
+                'fournisseur_nom': fiche.engagement.mise_a_disposition.fournisseur.raison_sociale,
+                'fournisseur_telephone': fiche.engagement.mise_a_disposition.fournisseur.telephone or '',
+                'date_debut': fiche.engagement.date_debut,
+                'date_fin': fiche.engagement.date_fin,
+                'responsable': fiche.engagement.responsable.get_full_name() if fiche.engagement.responsable else '',
+            },
+            
+            'pointages_journaliers': [
+                {
+                    'id': p.id,
+                    'date_pointage': p.date_pointage,
+                    'jour_semaine': p.get_jour_semaine_display() if hasattr(p, 'get_jour_semaine_display') else '',
+                    'chantier_pointage': p.chantier_pointage or '',
+                    'chantier_effectif': p.get_chantier_effectif(),
+                    'a_change_de_chantier': p.a_change_de_chantier(),
+                    'compteur_debut': p.compteur_debut,
+                    'compteur_fin': p.compteur_fin,
+                    'heures_travail': float(p.heures_travail),
+                    'heures_panne': float(p.heures_panne),
+                    'heures_arret': float(p.heures_arret),
+                    'consommation_carburant': float(p.consommation_carburant),
+                    'montant_journalier': float(p.montant_journalier),
+                    'observations': p.observations or '',
+                }
+                for p in pointages
+            ],
+            
+            # Totaux et statistiques
+            'totaux': {
+                'total_jours_pointes': pointages.count(),
+                'total_heures_travail': float(totaux['total_heures_travail'] or 0),
+                'total_heures_panne': float(totaux['total_heures_panne'] or 0),
+                'total_heures_arret': float(totaux['total_heures_arret'] or 0),
+                'total_carburant': float(totaux['total_carburant'] or 0),
+                'total_montant': float(totaux['total_montant'] or 0),
+                'compteur_debut_global': premier_pointage.compteur_debut if premier_pointage else None,
+                'compteur_fin_global': dernier_pointage.compteur_fin if dernier_pointage else None,
+            },
+            
+            'metadata': {
+                'generated_at': timezone.now(),
+                'generated_by': request.user.get_full_name() or request.user.username,
+                'period_days': (fiche.periode_fin - fiche.periode_debut).days + 1,
+                'completion_rate': round((pointages.count() / ((fiche.periode_fin - fiche.periode_debut).days + 1)) * 100, 1) if pointages.count() > 0 else 0,
+            }
+        }
+        
+        return Response(pdf_data)
+
+    @action(detail=True, methods=['get'])
+    def chantiers_utilises(self, request, pk=None):
+        """
+        Endpoint: GET /api/fiches-pointage/{id}/chantiers-utilises/
+        Retourner les chantiers utilisés dans cette fiche
+        """
+        fiche = self.get_object()
+        
+        return Response({
+            'fiche_id': fiche.id,
+            'chantier_principal': fiche.engagement.mise_a_disposition.demande_location.chantier,
+            'chantiers_utilises': fiche.get_chantiers_utilises(),
+            'repartition_par_chantier': fiche.get_repartition_par_chantier(),
+            'changements_count': fiche.get_changements_chantier_count()
+        })
     @action(detail=True, methods=['post'])
     def creer_pointages_periode(self, request, pk=None):
         """
@@ -1403,7 +1517,7 @@ class FichePointageMaterielViewSet(viewsets.ModelViewSet):
                 'error': 'Engagement introuvable'
             }, status=status.HTTP_404_NOT_FOUND)
 
- 
+
 class PointageJournalierViewSet(viewsets.ModelViewSet):
     """
     ViewSet pour les pointages journaliers
