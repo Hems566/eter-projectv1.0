@@ -16,18 +16,18 @@ export const demandesAPI = {
   // Supprimer une demande
   delete: (id) => api.delete(`/demandes-location/${id}/`),
   
-  // Valider une demande
-  
+  // Actions sur les demandes
   soumettre: (id) => api.post(`/demandes-location/${id}/soumettre/`),
-  
   retirerSoumission: (id) => api.post(`/demandes-location/${id}/retirer-soumission/`),
-  
   valider: (id, data) => api.post(`/demandes-location/${id}/valider/`, data),
-  // Statistiques
-  stats: () => api.get('/demandes-location/statistiques/'),
+
+  // Statistiques globales pour le dashboard
+  stats: () => api.get('/dashboard/stats/'),
+
+  // Vues spécifiques pour l'utilisateur
   mesdemandes: () => api.get('/demandes-location/mes_demandes/'),
   enAttenteValidation: () => api.get('/demandes-location/en_attente_validation/'),
-  statistiques: () => api.get('/demandes-location/statistiques/'),
-  // Matériels disponibles
+
+  // Matériels disponibles pour la création de demande
   materiels: () => api.get('/materiels-location/'),
 };

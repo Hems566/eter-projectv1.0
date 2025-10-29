@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Card,
-  Row, // On garde Row pour les structures fixes comme "Actions rapides"
+  Row,
   Col,
   Statistic,
   Button,
@@ -10,7 +10,6 @@ import {
   Typography,
   Spin,
   Avatar,
-  Divider // Pour séparer les cartes
 } from 'antd';
 import {
   FileTextOutlined,
@@ -18,16 +17,11 @@ import {
   ExclamationCircleOutlined,
   UserOutlined,
   ContainerOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  TeamOutlined,
+  ToolOutlined,
 } from '@ant-design/icons';
-import {
-  LineChart,
-  Line as RechartsLine,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer
-} from 'recharts';
 import { Bar, Line as ChartjsLine } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -44,7 +38,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { demandesAPI } from '../services/demandes';
 import { pointagesAPI } from '../services/pointages';
-import { formatCurrency, formatDate } from '../utils/formatters';
 import NotificationPanel from '../components/dashboard/NotificationPanel';
 
 ChartJS.register(
@@ -222,290 +215,89 @@ const Dashboard = () => {
     }
   ].filter(action => action.show);
 
-  const chartData = useMemo(() => {
-    return recentDemandes
-      .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
-      .map(demand => ({
-        date: formatDate(demand.created_at, 'MMM DD'),
-        budget: demand.budget_previsionnel_mru || 0,
-        numero: demand.numero
-      }));
-  }, [recentDemandes]);
-
   return (
     <div style={{ backgroundColor: '#f5f5f5', minHeight: '100vh', padding: '24px' }}>
-      {/* Bienvenue */}
-      <Card
-        style={{
-          marginBottom: 24,
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          borderRadius: '8px',
-          background: 'linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%)'
-        }}
-      >
+      <Card style={{ marginBottom: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', borderRadius: '8px' }}>
         <Row align="middle" justify="space-between">
           <Col flex="auto">
             <AntTitle level={2} style={{ margin: 0, color: '#1890ff' }}>
               Bonjour {user?.first_name} {user?.last_name} 👋
             </AntTitle>
             <Paragraph style={{ margin: 0, color: '#666', fontSize: '16px' }}>
-              Voici un aperçu de votre activité de location de matériel
+              Voici la synthèse de l'activité de location de matériel.
             </Paragraph>
           </Col>
           <Col>
-            <Avatar
-              size={64}
-              icon={<UserOutlined />}
-              style={{ backgroundColor: '#1890ff' }}
-            />
+            <Avatar size={64} icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }} />
           </Col>
         </Row>
       </Card>
 
-      {/* Actions rapides */}
-      <Card
-        title={<AntTitle level={4} style={{ margin: 0, color: '#333' }}>Actions rapides</AntTitle>}
-        style={{ marginBottom: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', borderRadius: '8px' }}
-      >
-        <Row gutter={16}>
-          {quickActions.map((action, index) => (
-            <Col span={6} key={index}>
-              <Card
-                hoverable
-                style={{
-                  textAlign: 'center',
-                  borderColor: action.color,
-                  borderRadius: '8px',
-                  transition: 'all 0.3s ease',
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.05)'
-                }}
-                onClick={action.action}
-                bodyStyle={{ padding: '16px' }}
-              >
-                <div style={{ fontSize: '28px', color: action.color, marginBottom: 12 }}>
-                  {action.icon}
-                </div>
-                <Text strong style={{ color: '#333', fontSize: '14px' }}>
-                  {action.title}
-                </Text>
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '50px' }}><Spin size="large" /></div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <Card title={<AntTitle level={4} style={{ margin: 0 }}>Vue d'ensemble</AntTitle>} style={{ borderRadius: '8px' }}>
+            <Row gutter={[16, 16]}>
+              <Col xs={24} sm={12} md={6}>
+                <Statistic title="Total Demandes" value={stats.demandes?.total || 0} prefix={<FileTextOutlined />} valueStyle={{ color: '#1890ff' }} />
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Statistic title="Demandes en Attente" value={stats.demandes?.par_statut?.SOUMISE?.count || 0} prefix={<ExclamationCircleOutlined />} valueStyle={{ color: '#faad14' }} />
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Statistic title="Engagements Actifs" value={stats.engagements?.actifs || 0} prefix={<CheckCircleOutlined />} valueStyle={{ color: '#52c41a' }} />
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Statistic title="Engagements Expirés" value={stats.engagements?.expires || 0} prefix={<CloseCircleOutlined />} valueStyle={{ color: '#f5222d' }} />
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Statistic title="Fournisseurs" value={stats.fournisseurs?.actifs || 0} prefix={<TeamOutlined />} valueStyle={{ color: '#722ed1' }} />
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Statistic title="Matériels Disponibles" value={stats.materiels?.disponibles || 0} prefix={<ToolOutlined />} valueStyle={{ color: '#eb2f96' }} />
+              </Col>
+            </Row>
+          </Card>
+
+          <Row gutter={[24, 24]}>
+            <Col xs={24} lg={12}>
+              <NotificationPanel />
+            </Col>
+            <Col xs={24} lg={12}>
+              <Card title="Actions rapides" style={{ height: '100%', borderRadius: '8px' }}>
+                <Row gutter={[16, 16]}>
+                  {quickActions.map((action, index) => (
+                    <Col span={12} key={index}>
+                      <Card hoverable style={{ textAlign: 'center', borderRadius: '8px' }} onClick={action.action} bodyStyle={{ padding: '16px' }}>
+                        <div style={{ fontSize: '28px', color: action.color, marginBottom: 12 }}>{action.icon}</div>
+                        <Text strong style={{ fontSize: '14px' }}>{action.title}</Text>
+                      </Card>
+                    </Col>
+                  ))}
+                </Row>
               </Card>
             </Col>
-          ))}
-        </Row>
-      </Card>
+          </Row>
 
-      {/* Conteneur pour les cartes prenant tout l'espace */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-        {/* Statistiques principales - une par ligne */}
-        <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
-          <Card
-            style={{
-              flex: 1,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              borderRadius: '8px',
-              background: 'linear-gradient(135deg, #f6ffed 0%, #ffffff 100%)'
-            }}
-          >
-            <Statistic
-              title="Total demandes"
-              value={stats.total || 0}
-              prefix={<FileTextOutlined />}
-              valueStyle={{ color: '#3f8600', fontSize: '24px' }}
-            />
-          </Card>
-          <Card
-            style={{
-              flex: 1,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              borderRadius: '8px',
-              background: 'linear-gradient(135deg, #fff2f0 0%, #ffffff 100%)'
-            }}
-          >
-            <Statistic
-              title="En attente"
-              value={stats?.par_statut?.SOUMISE.count || 0}
-              prefix={<ExclamationCircleOutlined />}
-              valueStyle={{ color: '#cf1322', fontSize: '24px' }}
-            />
-          </Card>
-          <Card
-            style={{
-              flex: 1,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              borderRadius: '8px',
-              background: 'linear-gradient(135deg, #e6f7ff 0%, #ffffff 100%)'
-            }}
-          >
-            <Statistic
-              title="Validées"
-              value={stats?.par_statut?.VALIDEE.count || 0}
-              prefix={<FileTextOutlined />}
-              valueStyle={{ color: '#1890ff', fontSize: '24px' }}
-            />
-          </Card>
-          <Card
-            style={{
-              flex: 1,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              borderRadius: '8px',
-              background: 'linear-gradient(135deg, #f0eaff 0%, #ffffff 100%)'
-            }}
-          >
-            <Statistic
-              title="Budget total (MRU)"
-              value={stats?.budget_total || 0}
-              precision={0}
-              valueStyle={{ color: '#722ed1', fontSize: '24px' }}
-            />
-          </Card>
-        </div>
-
-        {/* Nouveaux graphiques Heures et Budget - une par ligne */}
-        {loadingCharts ? (
-          <Card style={{ marginBottom: 24 }}>
-            <div style={{ textAlign: 'center', padding: '50px' }}>
-              <Spin size="large" />
-              <p>Chargement des données de pointage...</p>
-            </div>
-          </Card>
-        ) : (
-          <>
-            <Card
-              title="Heures Planifiées vs Réelles"
-              style={{ borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
-            >
-              <div style={{ height: '300px' }}>
-                <Bar data={heuresData} options={heuresOptions} />
-              </div>
-            </Card>
-            <Card
-              title="Budget Prévu vs Réel"
-              style={{ borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
-            >
-              <div style={{ height: '300px' }}>
-                <ChartjsLine data={budgetData} options={budgetOptions} />
-              </div>
-            </Card>
-          </>
-        )}
-
-        {/* Demandes récentes - Graphique - une par ligne */}
-        <Card
-          title={
-            <Space>
-              <FileTextOutlined /> Évolution des demandes récentes
-            </Space>
-          }
-          extra={
-            <Button type="link" onClick={() => navigate('/demandes')}>
-              Voir toutes
-            </Button>
-          }
-          style={{
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            borderRadius: '8px'
-          }}
-        >
-          {loading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
-              <Spin size="large" />
-            </div>
-          ) : chartData.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-              <FileTextOutlined style={{ fontSize: '48px', marginBottom: 16 }} />
-              <Paragraph>Aucune demande récente</Paragraph>
-            </div>
+          {loadingCharts ? (
+            <Card><div style={{ textAlign: 'center', padding: '50px' }}><Spin size="large" /><p>Chargement des graphiques...</p></div></Card>
           ) : (
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis
-                  dataKey="date"
-                  stroke="#666"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="#666"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(value) => formatCurrency(value)}
-                />
-                <Tooltip
-                  formatter={(value, name, props) => [
-                    formatCurrency(value),
-                    `${name}: ${props.payload.numero}`,
-                    props.payload.date
-                  ]}
-                  labelStyle={{ fontWeight: 'bold' }}
-                />
-                <RechartsLine
-                  type="monotone"
-                  dataKey="budget"
-                  stroke="#1890ff"
-                  strokeWidth={3}
-                  dot={{ fill: '#1890ff', strokeWidth: 2, r: 4 }}
-                  activeDot={{ r: 6, stroke: '#fff', strokeWidth: 2 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <Row gutter={[24, 24]}>
+              <Col xs={24} lg={12}>
+                <Card title="Heures Planifiées vs Réelles" style={{ borderRadius: '8px' }}>
+                  <div style={{ height: '300px' }}><Bar data={heuresData} options={heuresOptions} /></div>
+                </Card>
+              </Col>
+              <Col xs={24} lg={12}>
+                <Card title="Budget Prévu vs Réel" style={{ borderRadius: '8px' }}>
+                  <div style={{ height: '300px' }}><ChartjsLine data={budgetData} options={budgetOptions} /></div>
+                </Card>
+              </Col>
+            </Row>
           )}
-        </Card>
-
-        {/* Notifications et alertes - une par ligne */}
-        <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
-          {/* Panel de notifications d'expiration */}
-          <div style={{ flex: 1, minWidth: '400px' }}>
-            <NotificationPanel />
-            {/* Debug info */}
-            {process.env.NODE_ENV === 'development' && (
-              <div style={{ marginTop: 10, padding: 10, backgroundColor: '#f0f0f0', borderRadius: 4, fontSize: 12 }}>
-                Debug: Dashboard loading stats and notifications
-              </div>
-            )}
-          </div>
-
-          {/* Alertes diverses */}
-          <div style={{ flex: 1, minWidth: '400px' }}>
-            {stats?.par_statut?.SOUMISE.count > 0 && (user?.is_acheteur || user?.is_admin) && (
-              <Alert
-                message="Demandes en attente"
-                description={`${stats?.par_statut?.SOUMISE.count} demande(s) nécessite(nt) votre validation`}
-                type="warning"
-                showIcon
-                style={{
-                  borderRadius: '8px',
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-                  marginBottom: '16px'
-                }}
-                action={
-                  <Button size="small" onClick={() => navigate('/demandes?statut=SOUMISE')}>
-                    Voir
-                  </Button>
-                }
-              />
-            )}
-
-            {/* Placeholder for other alerts */}
-            <Card
-              style={{
-                borderRadius: '8px',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-                background: 'linear-gradient(135deg, #f6ffed 0%, #ffffff 100%)'
-              }}
-            >
-              <div style={{ textAlign: 'center', padding: '20px' }}>
-                <FileTextOutlined style={{ fontSize: '32px', color: '#52c41a', marginBottom: '8px' }} />
-                <div style={{ fontSize: '14px', color: '#666' }}>
-                  Système de notifications actif
-                </div>
-              </div>
-            </Card>
-          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

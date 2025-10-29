@@ -1,5 +1,5 @@
 from rest_framework import viewsets, status, permissions
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
@@ -1088,3 +1088,66 @@ class FicheVerificationPointageViewSet(viewsets.ModelViewSet):
             return FicheVerificationPointageCreateSerializer
         return FicheVerificationPointageSerializer
     
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def statistiques_dashboard(request):
+    """
+    Endpoint: GET /api/dashboard/stats/
+    Fournit des statistiques globales pour le tableau de bord.
+    """
+    today = date.today()
+    user = request.user
+
+    # Permissions - qui peut voir quoi
+    demandes_queryset = DemandeLocation.objects.all()
+    engagements_queryset = Engagement.objects.all()
+    
+    # Admin and acheteur see everything
+    is_privileged = user.is_superuser or (hasattr(user, 'is_acheteur') and user.is_acheteur)
+
+    if not is_privileged:
+        demandes_queryset = demandes_queryset.filter(demandeur=user)
+        engagements_queryset = engagements_queryset.filter(
+            mise_a_disposition__demande_location__demandeur=user
+        )
+
+    # Statistiques sur les demandes
+    demandes_stats = demandes_queryset.aggregate(
+        total=Count('id'),
+        budget_total=Sum('budget_previsionnel_mru')
+    )
+    demandes_par_statut = {
+        s[0]: {'count': demandes_queryset.filter(statut=s[0]).count(), 'label': s[1]}
+        for s in DemandeLocation.STATUT_CHOICES
+    }
+
+    # Statistiques sur les engagements
+    engagements_stats = engagements_queryset.aggregate(
+        actifs=Count('id', filter=Q(date_fin__gte=today)),
+        expires=Count('id', filter=Q(date_fin__lt=today))
+    )
+
+    # Statistiques sur les fournisseurs et matériels (globales)
+    fournisseurs_actifs = Fournisseur.objects.filter(actif=True).count()
+    materiels_disponibles = MaterielLocation.objects.filter(actif=True).count()
+
+    response_data = {
+        'demandes': {
+            'total': demandes_stats['total'] or 0,
+            'par_statut': demandes_par_statut,
+            'budget_total': demandes_stats['budget_total'] or 0
+        },
+        'engagements': {
+            'actifs': engagements_stats['actifs'] or 0,
+            'expires': engagements_stats['expires'] or 0,
+        },
+        'fournisseurs': {
+            'actifs': fournisseurs_actifs,
+        },
+        'materiels': {
+            'disponibles': materiels_disponibles,
+        }
+    }
+    
+    return Response(response_data)

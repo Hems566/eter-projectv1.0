@@ -21,8 +21,8 @@ urlpatterns = [
     path('', include(router.urls)),
     # path('', api.fournisseurs_list)
     
-#     # Endpoints pour les statistiques
-#     path('statistiques/', views.statistiques_dashboard, name='statistiques'),
-#     path('dashboard/stats/', views.statistiques_dashboard, name='dashboard_stats'),  # Alias pour compatibilité frontend
+    # Endpoints pour les statistiques
+    path('statistiques/', views.statistiques_dashboard, name='statistiques'),
+    path('dashboard/stats/', views.statistiques_dashboard, name='dashboard_stats'),  # Alias pour compatibilité frontend
     
 ]

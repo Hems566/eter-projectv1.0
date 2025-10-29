@@ -3,6 +3,7 @@ import { create } from 'zustand';
 
 export const useNotificationStore = create((set, get) => ({
   notifications: [],
+  expiredCount: 0,
   criticalCount: 0,
   urgentCount: 0,
   totalCount: 0,
@@ -16,28 +17,29 @@ export const useNotificationStore = create((set, get) => ({
       // Import dynamique pour éviter les dépendances circulaires
       const { engagementsAPI } = await import('../services/engagements');
 
-      console.log('Tentative de récupération des engagements expirants...');
       const result = await engagementsAPI.expirantBientot();
-      console.log('Réponse API brute:', result);
+      const engagements = result.data.results || result.data || [];
 
-      const engagements = result.data.results || result.data;
-      console.log('Engagements reçus:', engagements);
-      console.log('Nombre d\'engagements:', engagements.length);
+      const expiredCount = engagements.filter(e => {
+        const joursRestants = getJoursRestants(e.date_fin);
+        return joursRestants < 0;
+      }).length;
 
       const criticalCount = engagements.filter(e => {
         const joursRestants = getJoursRestants(e.date_fin);
-        return joursRestants <= 7 && joursRestants >= 0;
+        return joursRestants >= 0 && joursRestants <= 7;
       }).length;
+
       const urgentCount = engagements.filter(e => {
         const joursRestants = getJoursRestants(e.date_fin);
         return joursRestants > 7 && joursRestants <= 15;
       }).length;
+      
       const totalCount = engagements.length;
-
-      console.log(`Notifications: ${totalCount} total, ${criticalCount} critiques, ${urgentCount} urgentes`);
 
       set({
         notifications: engagements,
+        expiredCount,
         criticalCount,
         urgentCount,
         totalCount,
@@ -45,7 +47,6 @@ export const useNotificationStore = create((set, get) => ({
       });
     } catch (error) {
       console.error('Erreur chargement notifications:', error);
-      console.error('Détails erreur:', error.response?.data, error.response?.status, error.message);
       set({
         error: error.response?.data?.message || error.message || 'Erreur lors du chargement des notifications',
         loading: false
@@ -56,6 +57,7 @@ export const useNotificationStore = create((set, get) => ({
   // Clear notifications
   clearNotifications: () => set({
     notifications: [],
+    expiredCount: 0,
     criticalCount: 0,
     urgentCount: 0,
     totalCount: 0
