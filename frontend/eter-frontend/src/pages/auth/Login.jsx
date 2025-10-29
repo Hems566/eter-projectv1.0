@@ -25,10 +25,23 @@ const Login = () => {
       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
     }}>
       <Card
-        title="Connexion - Location Matériel"
-        style={{ width: 400 }}
+        style={{ width: 400, textAlign: 'center' }}
         bodyStyle={{ padding: '24px' }}
+        bordered={false}
       >
+        {/* Logo */}
+        <img 
+          src="/eter-logo.png" 
+          alt="ETER Logo" 
+          style={{ 
+            width: '120px', 
+            marginBottom: '24px',
+            borderRadius: '8px'
+          }} 
+        />
+
+        <h2 style={{ marginBottom: '24px', color: '#333' }}>Connexion - Location Matériel</h2>
+
         {error && (
           <Alert
             message="Erreur de connexion"
@@ -72,7 +85,7 @@ const Login = () => {
               style={{ width: '100%' }}
               loading={loading}
             >
-              {loading ? <Spin size="small" /> : 'Se connecter'}
+              Se connecter
             </Button>
           </Form.Item>
         </Form>

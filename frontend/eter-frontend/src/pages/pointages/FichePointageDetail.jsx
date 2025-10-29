@@ -11,13 +11,21 @@ import {
   Select,
   message,
   Tag,
-  Divider
+  Divider,
+  Typography,
+  Empty,
+  Progress,
+  Alert
 } from 'antd';
 import { 
   ArrowLeftOutlined, 
   EditOutlined, 
   CalendarOutlined,
-  PlusOutlined
+  PlusOutlined,
+  ClockCircleOutlined,
+  DollarCircleOutlined,
+  ToolOutlined,
+  PauseCircleOutlined
 } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import { pointagesAPI } from '../../services/pointages';
@@ -26,6 +34,7 @@ import GeneratePDFButton from '../../components/pointages/GeneratePDFButton';
 import moment from 'moment';
 
 const { Option } = Select;
+const { Title, Text } = Typography;
 
 const FichePointageDetail = () => {
   const { id } = useParams();
@@ -119,24 +128,60 @@ const FichePointageDetail = () => {
         heures_travail: 0,
         heures_panne: 0,
         heures_arret: 0,
-        montant: 0
+        montant: 0,
+        total_heures: 0
       };
     }
+    
+    const totalHeures = filteredPointages.reduce((acc, pointage) => 
+      acc + (pointage.heures_travail || 0) + (pointage.heures_panne || 0) + (pointage.heures_arret || 0), 0);
     
     return filteredPointages.reduce((acc, pointage) => ({
       jours: acc.jours + 1,
       heures_travail: acc.heures_travail + (pointage.heures_travail || 0),
       heures_panne: acc.heures_panne + (pointage.heures_panne || 0),
       heures_arret: acc.heures_arret + (pointage.heures_arret || 0),
-      montant: acc.montant + (pointage.montant_journalier || 0)
+      montant: acc.montant + (pointage.montant_journalier || 0),
+      total_heures: totalHeures
     }), {
       jours: 0,
       heures_travail: 0,
       heures_panne: 0,
       heures_arret: 0,
-      montant: 0
+      montant: 0,
+      total_heures: 0
     });
   }, [filteredPointages]);
+
+  // Données pour la ligne de total
+  const totalRow = useMemo(() => {
+    if (filteredPointages.length === 0) return null;
+    return {
+      key: 'total',
+      date_pointage: 'Total',
+      jour_semaine: '',
+      heures_travail: weekStats.heures_travail,
+      heures_panne: weekStats.heures_panne,
+      heures_arret: weekStats.heures_arret,
+      consommation_carburant: filteredPointages.reduce((acc, p) => acc + (p.consommation_carburant || 0), 0),
+      montant_journalier: weekStats.montant,
+    };
+  }, [weekStats, filteredPointages]);
+
+  const completionRate = useMemo(() => {
+    if (!fiche) return 0;
+    const totalDaysInPeriod = moment(fiche.periode_fin).diff(moment(fiche.periode_debut), 'days') + 1;
+    return Math.round((fiche.total_jours_pointes / totalDaysInPeriod) * 100);
+  }, [fiche]);
+
+  const dataSourceWithTotal = useMemo(() => {
+    if (!fiche) return [];
+    const data = [...filteredPointages];
+    if (totalRow) {
+      data.push(totalRow);
+    }
+    return data;
+  }, [fiche, filteredPointages, totalRow]);
 
   const handleAddPointage = () => {
     navigate(`/pointages/journaliers/create?fiche_id=${fiche.id}`);
@@ -147,87 +192,126 @@ const FichePointageDetail = () => {
       title: 'Date',
       dataIndex: 'date_pointage',
       key: 'date_pointage',
-      render: (date) => formatDate(date),
+      width: 100,
+      render: (date, record) => 
+        record.key === 'total' ? (
+          <Text strong>{date}</Text>
+        ) : (
+          formatDate(date)
+        ),
       sorter: (a, b) => new Date(a.date_pointage) - new Date(b.date_pointage),
     },
     {
       title: 'Jour',
       dataIndex: 'jour_semaine',
       key: 'jour_semaine',
-      render: (jour) => jour?.substring(0, 3),
+      width: 80,
+      render: (jour, record) => 
+        record.key === 'total' ? null : (
+          <Tag color="blue">{jour?.substring(0, 3)}</Tag>
+        ),
     },
     {
       title: 'Compteurs',
       key: 'compteurs',
-      render: (_, record) => (
-        <div>
-          {record.compteur_debut && record.compteur_fin ? (
-            <span>{record.compteur_debut} → {record.compteur_fin}</span>
-          ) : (
-            <span style={{ color: '#ccc' }}>Non renseigné</span>
-          )}
-        </div>
-      ),
+      width: 150,
+      render: (_, record) => 
+        record.key === 'total' ? null : (
+          <Space direction="vertical" size={0}>
+            {record.compteur_debut && record.compteur_fin ? (
+              <Text>{record.compteur_debut} → {record.compteur_fin}</Text>
+            ) : (
+              <Text type="secondary">Non renseigné</Text>
+            )}
+          </Space>
+        ),
     },
     {
       title: 'Heures travail',
       dataIndex: 'heures_travail',
       key: 'heures_travail',
+      width: 100,
       align: 'center',
-      render: (heures) => (
-        <Tag color={heures > 0 ? 'green' : 'default'}>
-          {heures || 0}h
-        </Tag>
-      ),
+      render: (heures, record) => 
+        record.key === 'total' ? (
+          <Text strong style={{ color: '#52c41a' }}>{heures}h</Text>
+        ) : (
+          <Tag color={heures > 0 ? 'green' : 'default'} style={{ margin: 0 }}>
+            {heures || 0}h
+          </Tag>
+        ),
     },
     {
       title: 'Heures panne',
       dataIndex: 'heures_panne',
       key: 'heures_panne',
+      width: 100,
       align: 'center',
-      render: (heures) => (
-        <Tag color={heures > 0 ? 'orange' : 'default'}>
-          {heures || 0}h
-        </Tag>
-      ),
+      render: (heures, record) => 
+        record.key === 'total' ? (
+          <Text strong style={{ color: '#faad14' }}>{heures}h</Text>
+        ) : (
+          <Tag color={heures > 0 ? 'orange' : 'default'} style={{ margin: 0 }}>
+            {heures || 0}h
+          </Tag>
+        ),
     },
     {
       title: 'Heures arrêt',
       dataIndex: 'heures_arret',
       key: 'heures_arret',
+      width: 100,
       align: 'center',
-      render: (heures) => (
-        <Tag color={heures > 0 ? 'red' : 'default'}>
-          {heures || 0}h
-        </Tag>
-      ),
+      render: (heures, record) => 
+        record.key === 'total' ? (
+          <Text strong style={{ color: '#cf1322' }}>{heures}h</Text>
+        ) : (
+          <Tag color={heures > 0 ? 'red' : 'default'} style={{ margin: 0 }}>
+            {heures || 0}h
+          </Tag>
+        ),
     },
     {
       title: 'Carburant (L)',
       dataIndex: 'consommation_carburant',
       key: 'carburant',
+      width: 100,
       align: 'right',
-      render: (value) => formatNumber(value,2) || '0.00',
+      render: (value, record) => 
+        record.key === 'total' ? (
+          <Text strong>{formatNumber(value, 2)} L</Text>
+        ) : (
+          formatNumber(value, 2) || '0.00'
+        ),
     },
     {
       title: 'Montant (MRU)',
       dataIndex: 'montant_journalier',
       key: 'montant',
+      width: 120,
       align: 'right',
-      render: (value) => formatCurrency(value),
+      render: (value, record) => 
+        record.key === 'total' ? (
+          <Text strong style={{ color: '#3f8600' }}>{formatCurrency(value)}</Text>
+        ) : (
+          formatCurrency(value)
+        ),
     },
     {
       title: 'Actions',
       key: 'actions',
-      render: (_, record) => (
-        <Button
-          type="link"
-          size="small"
-          onClick={() => navigate(`/pointages/journaliers/${record.id}/edit`)}
-        >
-          Modifier
-        </Button>
-      ),
+      width: 100,
+      render: (_, record) => 
+        record.key !== 'total' && (
+          <Button
+            type="link"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => navigate(`/pointages/journaliers/${record.id}/edit`)}
+          >
+            Modifier
+          </Button>
+        ),
     },
   ];
 
@@ -236,13 +320,13 @@ const FichePointageDetail = () => {
   }
 
   if (!fiche) {
-    return <Card>Fiche non trouvée</Card>;
+    return <Card><Empty description="Fiche non trouvée" /></Card>;
   }
 
   return (
-    <div>
+    <div style={{ backgroundColor: '#f5f5f5', padding: '24px' }}>
       {/* Header */}
-      <Card style={{ marginBottom: 24 }}>
+      <Card style={{ marginBottom: 24, borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
         <Row align="middle" justify="space-between">
           <Col>
             <Space>
@@ -253,19 +337,19 @@ const FichePointageDetail = () => {
                 Retour
               </Button>
               <div>
-                <h2 style={{ margin: 0 }}>
+                <Title level={2} style={{ margin: 0, color: '#1890ff' }}>
                   Fiche {fiche.numero_fiche}
-                </h2>
-                <p style={{ margin: 0, color: '#666' }}>
+                </Title>
+                <Text type="secondary">
                   {fiche.materiel_type} - {formatDate(fiche.periode_debut)} → {formatDate(fiche.periode_fin)}
-                </p>
+                </Text>
               </div>
             </Space>
           </Col>
           
           <Col>
             <Space>
-               <GeneratePDFButton ficheId={id} type="primary" />
+              <GeneratePDFButton ficheId={id} type="primary" />
               <Button 
                 icon={<EditOutlined />}
                 onClick={() => navigate(`/pointages/fiches/${id}/edit`)}
@@ -287,29 +371,32 @@ const FichePointageDetail = () => {
       <Row gutter={24}>
         <Col span={16}>
           {/* Informations de la fiche */}
-          <Card title="Informations de la fiche" style={{ marginBottom: 24 }}>
-            <Descriptions column={2} bordered>
+          <Card title="Informations de la fiche" style={{ marginBottom: 24, borderRadius: '8px' }}>
+            <Descriptions column={2} bordered size="small">
               <Descriptions.Item label="Numéro fiche">
-                {fiche.numero_fiche}
+                <Tag color="blue">{fiche.numero_fiche}</Tag>
               </Descriptions.Item>
               <Descriptions.Item label="Engagement">
-                {fiche.engagement_numero}
+                <Tag color="green">{fiche.engagement_numero}</Tag>
               </Descriptions.Item>
               
               <Descriptions.Item label="Matériel">
-                {fiche.materiel_type} (Qté: {fiche.materiel_quantite})
+                <Space>
+                  <ToolOutlined />
+                  {fiche.materiel_type} (Qté: {fiche.materiel_quantite})
+                </Space>
               </Descriptions.Item>
               <Descriptions.Item label="Prix unitaire">
-                {formatCurrency(fiche.prix_unitaire)} MRU
+                <DollarCircleOutlined /> {formatCurrency(fiche.prix_unitaire)} MRU
               </Descriptions.Item>
               
               <Descriptions.Item label="Période" span={2}>
-                Du {formatDate(fiche.periode_debut)} au {formatDate(fiche.periode_fin)}
+                <CalendarOutlined /> Du {formatDate(fiche.periode_debut)} au {formatDate(fiche.periode_fin)}
               </Descriptions.Item>
               
               {fiche.immatriculation && (
                 <Descriptions.Item label="Immatriculation" span={2}>
-                  {fiche.immatriculation}
+                  <Tag color="geekblue">{fiche.immatriculation}</Tag>
                 </Descriptions.Item>
               )}
             </Descriptions>
@@ -319,7 +406,7 @@ const FichePointageDetail = () => {
           <Card 
             title={
               <Space>
-                <CalendarOutlined />
+                <ClockCircleOutlined />
                 Pointages détaillés
               </Space>
             }
@@ -327,93 +414,130 @@ const FichePointageDetail = () => {
               <Select
                 value={selectedWeek}
                 onChange={setSelectedWeek}
-                style={{ width: 200 }}
-                placeholder="Sélectionner une semaine"
+                style={{ width: 220 }}
+                dropdownMatchSelectWidth={false}
+                size="small"
               >
-                <Option value="all">Toutes les semaines</Option>
+                <Option value="all">
+                  <Space>
+                    <CalendarOutlined />
+                    Toutes les semaines
+                  </Space>
+                </Option>
                 <Divider style={{ margin: '4px 0' }} />
                 {getWeeksInPeriod.map(week => (
                   <Option key={week.key} value={week.key}>
-                    Semaine {week.weekNumber} ({week.label})
+                    <Space>
+                      <CalendarOutlined />
+                      Semaine {week.weekNumber} ({week.label})
+                    </Space>
                   </Option>
                 ))}
               </Select>
             }
-            style={{ marginBottom: 24 }}
+            style={{ marginBottom: 24, borderRadius: '8px' }}
           >
+            {/* Alert pour complétion */}
+            <Alert
+              message={
+                <Space>
+                  <Progress 
+                    percent={completionRate} 
+                    size="small" 
+                    strokeColor="#52c41a"
+                    showInfo={false}
+                  />
+                  <Text>Complétion: {completionRate}% ({fiche.total_jours_pointes}/{moment(fiche.periode_fin).diff(moment(fiche.periode_debut), 'days') + 1} jours)</Text>
+                </Space>
+              }
+              type={completionRate < 80 ? 'warning' : 'success'}
+              showIcon={false}
+              style={{ marginBottom: 16 }}
+            />
+
             {/* Statistiques de la semaine sélectionnée */}
-            {selectedWeek !== 'all' && (
-              <div style={{ marginBottom: 16, padding: '12px', backgroundColor: '#f5f5f5', borderRadius: 4 }}>
-                <Row gutter={16}>
+            {selectedWeek !== 'all' && filteredPointages.length > 0 && (
+              <Card size="small" style={{ marginBottom: 16 }}>
+                <Row gutter={12}>
                   <Col span={6}>
                     <Statistic
-                      title="Jours"
+                      title={<ClockCircleOutlined />}
                       value={weekStats.jours}
-                      valueStyle={{ fontSize: '14px' }}
+                      valueStyle={{ fontSize: '16px' }}
                     />
                   </Col>
                   <Col span={6}>
                     <Statistic
-                      title="Travail"
+                      title={<ClockCircleOutlined style={{ color: '#52c41a' }} />}
                       value={weekStats.heures_travail}
                       suffix="h"
-                      valueStyle={{ color: '#52c41a', fontSize: '14px' }}
+                      valueStyle={{ color: '#52c41a', fontSize: '16px' }}
                     />
                   </Col>
                   <Col span={6}>
                     <Statistic
-                      title="Panne"
+                      title={<ToolOutlined style={{ color: '#faad14' }} />}
                       value={weekStats.heures_panne}
                       suffix="h"
-                      valueStyle={{ color: '#faad14', fontSize: '14px' }}
+                      valueStyle={{ color: '#faad14', fontSize: '16px' }}
                     />
                   </Col>
                   <Col span={6}>
                     <Statistic
-                      title="Arrêt"
+                      title={<PauseCircleOutlined style={{ color: '#cf1322' }} />}
                       value={weekStats.heures_arret}
                       suffix="h"
-                      valueStyle={{ color: '#cf1322', fontSize: '14px' }}
+                      valueStyle={{ color: '#cf1322', fontSize: '16px' }}
                     />
                   </Col>
                 </Row>
-              </div>
+              </Card>
             )}
 
             {/* Tableau des pointages */}
             <Table
               columns={pointagesColumns}
-              dataSource={filteredPointages}
+              dataSource={dataSourceWithTotal}
               rowKey="id"
               pagination={false}
-              size="small"
-              scroll={{ x: 800 }}
+              size="middle"
+              scroll={{ x: 1000 }}
               locale={{
-                emptyText: selectedWeek === 'all' 
-                  ? 'Aucun pointage pour cette fiche' 
-                  : 'Aucun pointage pour cette semaine'
+                emptyText: (
+                  <Empty 
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description={
+                      selectedWeek === 'all' 
+                        ? 'Aucun pointage pour cette fiche' 
+                        : 'Aucun pointage pour cette semaine'
+                    }
+                  />
+                )
               }}
+              footer={() => null}
+              rowClassName={(record) => record.key === 'total' ? 'ant-table-row-total' : ''}
             />
           </Card>
         </Col>
 
         <Col span={8}>
           {/* Statistiques globales */}
-          <Card style={{ marginBottom: 24 }}>
+          <Card title="Statistiques globales" style={{ marginBottom: 24, borderRadius: '8px' }}>
             <Statistic
-              title="Montant total calculé"
-              value={fiche.montant_total_calcule}
+              title={<DollarCircleOutlined />}
+              value={formatCurrency(fiche.montant_total_calcule)}
               suffix="MRU"
               precision={3}
-              valueStyle={{ color: '#3f8600' }}
+              valueStyle={{ color: '#3f8600', fontSize: '24px' }}
             />
-            <br />
+            <Divider style={{ margin: '12px 0' }} />
             <Row gutter={16}>
               <Col span={12}>
                 <Statistic
                   title="Jours pointés"
                   value={fiche.total_jours_pointes || 0}
                   suffix="jours"
+                  valueStyle={{ fontSize: '16px' }}
                 />
               </Col>
               <Col span={12}>
@@ -421,18 +545,17 @@ const FichePointageDetail = () => {
                   title="Heures travail"
                   value={fiche.total_heures_travail || 0}
                   suffix="h"
-                  valueStyle={{ color: '#52c41a' }}
+                  valueStyle={{ color: '#52c41a', fontSize: '16px' }}
                 />
               </Col>
             </Row>
-            <br />
             <Row gutter={16}>
               <Col span={12}>
                 <Statistic
                   title="Heures panne"
                   value={fiche.total_heures_panne || 0}
                   suffix="h"
-                  valueStyle={{ color: '#faad14' }}
+                  valueStyle={{ color: '#faad14', fontSize: '16px' }}
                 />
               </Col>
               <Col span={12}>
@@ -440,47 +563,48 @@ const FichePointageDetail = () => {
                   title="Heures arrêt"
                   value={fiche.total_heures_arret || 0}
                   suffix="h"
-                  valueStyle={{ color: '#cf1322' }}
+                  valueStyle={{ color: '#cf1322', fontSize: '16px' }}
                 />
               </Col>
             </Row>
           </Card>
 
           {/* Résumé par semaine */}
-          <Card title="Résumé par semaine">
+          <Card title="Résumé par semaine" style={{ borderRadius: '8px' }}>
             {Object.entries(getPointagesByWeek).length === 0 ? (
-              <div style={{ fontSize: '12px', color: '#666', textAlign: 'center' }}>
-                Aucun pointage saisi
-              </div>
+              <Empty description={<Text>Aucun pointage saisi</Text>} />
             ) : (
-              <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+              <div style={{ maxHeight: 400, overflowY: 'auto' }}>
                 {getWeeksInPeriod
                   .filter(week => getPointagesByWeek[week.key])
                   .map(week => {
                     const weekData = getPointagesByWeek[week.key];
                     const weekTotal = weekData.reduce((sum, p) => sum + (p.montant_journalier || 0), 0);
                     const daysCount = weekData.length;
+                    const weekHeures = weekData.reduce((sum, p) => sum + (p.heures_travail || 0) + (p.heures_panne || 0) + (p.heures_arret || 0), 0);
                     
                     return (
-                      <div 
-                        key={week.key} 
-                        style={{ 
-                          padding: '8px 0', 
-                          borderBottom: '1px solid #f0f0f0',
-                          cursor: 'pointer'
-                        }}
+                      <Card
+                        key={week.key}
+                        size="small"
+                        hoverable
+                        style={{ marginBottom: 8, borderRadius: '4px' }}
+                        bodyStyle={{ padding: '12px' }}
                         onClick={() => setSelectedWeek(week.key)}
                       >
-                        <div style={{ fontWeight: selectedWeek === week.key ? 'bold' : 'normal' }}>
-                          Semaine {week.weekNumber}
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#666' }}>
-                          {week.label} • {daysCount} jour{daysCount > 1 ? 's' : ''}
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#1890ff', fontWeight: 'bold' }}>
-                          {formatCurrency(weekTotal)} MRU
-                        </div>
-                      </div>
+                        <Space direction="vertical" style={{ width: '100%' }}>
+                          <Space>
+                            <CalendarOutlined />
+                            <Text strong>Semaine {week.weekNumber}</Text>
+                          </Space>
+                          <Text type="secondary" style={{ fontSize: '12px' }}>
+                            {week.label} • {daysCount} jour{daysCount > 1 ? 's' : ''} • {weekHeures}h total
+                          </Text>
+                          <Text strong style={{ color: '#3f8600', marginTop: 4 }}>
+                            {formatCurrency(weekTotal)} MRU
+                          </Text>
+                        </Space>
+                      </Card>
                     );
                   })
                 }

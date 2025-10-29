@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Layout, Menu, Dropdown, Avatar, Space } from 'antd';
-import { 
-  UserOutlined, 
-  FileTextOutlined, 
+import {
+  UserOutlined,
+  FileTextOutlined,
   ToolOutlined,
   BarChartOutlined,
   SettingOutlined,
@@ -12,7 +12,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useAuthStore } from '../../store/authStore';
-import { useMenuState } from '../../hooks/useMenuState'; 
+import { useMenuState } from '../../hooks/useMenuState';
+import NotificationBadge from './NotificationBadge';
 
 const { Header, Sider, Content } = Layout;
 
@@ -63,13 +64,6 @@ const AppLayout = ({ children }) => {
           label: 'Liste des demandes',
         }
       ];
-
-      if (canCreateDL) {
-        demandesChildren.push({
-          key: '/demandes/create',
-          label: 'Nouvelle demande',
-        });
-      }
 
       if (canValidateDL) {
         demandesChildren.push({
@@ -281,9 +275,15 @@ const AppLayout = ({ children }) => {
         style={siderStyle}
       >
         <div style={logoStyle}>
-          <h3 style={{ color: 'white', margin: 0 }}>
-            {collapsed ? 'ETER' : 'ETER'}
-          </h3>
+          <img 
+            src="/eter-logo.png" 
+            alt="ETER Logo" 
+            style={{ 
+              height: collapsed ? 32 : 48,
+              objectFit: 'contain',
+              transition: 'height 0.2s'
+            }} 
+          />
         </div>
         
         {/* ✅ Menu utilisant le hook */}
@@ -303,13 +303,16 @@ const AppLayout = ({ children }) => {
         {/* ✅ Header fixe */}
         <Header style={headerStyle}>
           <h2 style={{ margin: 0 }}>Gestion des Locations</h2>
-          
-          <Dropdown overlay={userMenu} trigger={['click']} placement="bottomRight">
-            <Space style={{ cursor: 'pointer' }}>
-              <Avatar icon={<UserOutlined />} />
-              <span>{user?.first_name} {user?.last_name}</span>
-            </Space>
-          </Dropdown>
+
+          <Space size="large">
+            <NotificationBadge />
+            <Dropdown overlay={userMenu} trigger={['click']} placement="bottomRight">
+              <Space style={{ cursor: 'pointer' }}>
+                <Avatar icon={<UserOutlined />} />
+                <span>{user?.first_name} {user?.last_name}</span>
+              </Space>
+            </Dropdown>
+          </Space>
         </Header>
         
         {/* ✅ Contenu */}

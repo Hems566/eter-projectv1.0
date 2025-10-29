@@ -14,7 +14,8 @@ import {
   Dropdown,
   Tooltip,
   Menu,
-  Modal
+  Modal,
+  message
 } from 'antd';
 import { 
   PlusOutlined, 
@@ -29,6 +30,7 @@ import {
 import '@ant-design/v5-patch-for-react-19';
 import { useNavigate } from 'react-router-dom';
 import { useMisesADispositionStore } from '../../store/misesADispositionStore';
+import { misesADispositionAPI } from '../../services/misesADisposition';
 import { formatCurrency, formatDate, getStatusColor } from '../../utils/formatters';
 import { usePermissions } from '../../hooks/usePermissions';
 
@@ -126,7 +128,7 @@ const MiseADispositionsList = () => {
         Voir détail
       </Menu.Item>
       
-      {canCreate(record) && (
+      {canEdit(record) && (
         <>
           <Menu.Item
             key="edit"
@@ -170,8 +172,8 @@ const MiseADispositionsList = () => {
       title: 'Chantier',
       dataIndex: 'chantier',
       key: 'chantier',
-      with:100,
-      // ellipsis: true,
+      width: 140,
+      ellipsis: true,
       render: (chantier) => (
         <Tooltip title={chantier}>
           {chantier}
@@ -182,12 +184,10 @@ const MiseADispositionsList = () => {
       title: 'Fournisseur',
       dataIndex: 'fournisseur_nom',
       key: 'fournisseur',
-      width: 150,
+      width: 140,
       render: (raison_sociale, record) => (
         <div>
           <strong>{raison_sociale}</strong>
-          <br />
-          {/* <small>NIF: {record.fournisseur?.nif}</small> */}
         </div>
       ),
     },

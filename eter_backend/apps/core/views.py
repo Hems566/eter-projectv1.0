@@ -722,11 +722,13 @@ class EngagementViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def expirant_bientot(self, request):
-        """Engagements expirant dans moins de 10 jours"""
-        date_limite = date.today() + timedelta(days=10)
+        """Engagements expirant dans moins de 30 jours ou récemment expirés"""
+        today = date.today()
+        date_limite_future = today + timedelta(days=30)  # Étendre à 30 jours
+        date_limite_passee = today - timedelta(days=30)  # Inclure les expirés récents
         engagements = self.get_queryset().filter(
-            date_fin__lte=date_limite, 
-            date_fin__gte=date.today()
+            date_fin__lte=date_limite_future,
+            date_fin__gte=date_limite_passee
         )
         
         page = self.paginate_queryset(engagements)

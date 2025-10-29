@@ -178,13 +178,13 @@ const EngagementsList = () => {
         Fiches de pointage
       </Menu.Item>
       <Menu.Divider />
-      <Menu.Item
+      {/* <Menu.Item
         key="edit"
         icon={<EditOutlined />}
         onClick={() => navigate(`/engagements/${engagement.id}/edit`)}
       >
         Modifier
-      </Menu.Item>
+      </Menu.Item> */}
       <Menu.Item
         key="delete"
         icon={<DeleteOutlined />}

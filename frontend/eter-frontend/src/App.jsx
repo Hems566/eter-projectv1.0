@@ -36,6 +36,8 @@ import PointageJournalierEdit from './pages/pointages/PointageJournalierEdit';
 import PointagesJournaliersList from './pages/pointages/PointagesJournaliersList';
 import FichePointageEdit from './pages/pointages/FichePointageEdit';
 import EngagementsExpirants from './pages/engagements/EngagementsExpirants';
+import MiseADispositionEdit from './pages/mise-a-disposition/MiseADispositionEdit';
+import EngagementEdit from './pages/engagements/EngagmentEdit';
 
 function App() {
   const { user, isAuthenticated, initAuth } = useAuthStore();
@@ -133,6 +135,14 @@ function App() {
             </ProtectedRoute>
           } 
         />
+        <Route 
+          path="/mises-a-disposition/:id/edit" 
+          element={
+            <ProtectedRoute resource="mises-a-disposition">
+              <MiseADispositionEdit />
+            </ProtectedRoute>
+          } 
+        />
 
         {/* Routes des engagements */}
         <Route 
@@ -156,6 +166,14 @@ function App() {
           element={
             <ProtectedRoute resource="engagements">
               <EngagementDetail />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/engagements/:id/edit" 
+          element={
+            <ProtectedRoute resource="engagements">
+              <EngagementEdit />
             </ProtectedRoute>
           } 
         />

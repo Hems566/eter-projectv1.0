@@ -1,4 +1,4 @@
-// pages/fournisseurs/FournisseurForm.jsx
+// pages/FournisseurForm.jsx
 import React, { useState, useEffect } from 'react';
 import {
   Card,

@@ -15,7 +15,7 @@ SECRET_KEY = 'django-insecure-l^ub%^m9cx_36s+riyd=czbx1*5d3ey03+yl&mkp*t&(%$dho)
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '172.16.1.169', '172.16.2.4']
 # ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS").split(" ")
 
 
@@ -73,27 +73,27 @@ WSGI_APPLICATION = 'eter_backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
-
 DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': os.getenv('DB_NAME', 'eter_db'),
-            'USER': os.getenv('DB_USER', 'eter_admin'),
-            'PASSWORD': os.getenv('DB_PASSWORD', 'eter25'),
-            'HOST': os.getenv('DB_HOST', 'localhost'),
-            'PORT': os.getenv('DB_PORT', '3306'),
-            'OPTIONS': {
-                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-                'charset': 'utf8mb4',
-            },
-        }
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
 }
+
+# DATABASES = {
+#         'default': {
+#             'ENGINE': 'django.db.backends.mysql',
+#             'NAME': os.getenv('DB_NAME', 'eter_db'),
+#             'USER': os.getenv('DB_USER', 'eter_admin'),
+#             'PASSWORD': os.getenv('DB_PASSWORD', 'eter25'),
+#             'HOST': os.getenv('DB_HOST', 'localhost'),
+#             'PORT': os.getenv('DB_PORT', '3306'),
+#             'OPTIONS': {
+#                 'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+#                 'charset': 'utf8mb4',
+#             },
+#         }
+# }
 
 
 
@@ -167,7 +167,9 @@ REST_FRAMEWORK = {
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
-    'http://localhost:5173'
+    'http://localhost:5173',
+    'http://172.16.1.169:5173',
+    'http://172.16.2.4:5173',
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -176,6 +178,9 @@ CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
+    'http://172.16.1.169:5173',
+    'http://172.16.1.169:5173', 
+    'http://172.16.2.4:5173',
 ]
 
 # # Session Configuration (pour httpOnly cookies)

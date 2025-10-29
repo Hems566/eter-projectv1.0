@@ -435,5 +435,322 @@ const DemandeEdit = () => {
     </div>
   );
 };
-
 export default DemandeEdit;
+
+// // pages/demandes/DemandeEdit.jsx
+// import React, { useState, useEffect } from 'react';
+// import {
+//   Form,
+//   Input,
+//   InputNumber,
+//   Button,
+//   Card,
+//   Space,
+//   message,
+//   Row,
+//   Col,
+//   Descriptions,
+//   Alert,
+//   Spin,
+//   Divider
+// } from 'antd';
+// import { ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons';
+// import { useNavigate, useParams } from 'react-router-dom';
+// import { useDemandesStore } from '../../store/demandesStore';
+// import { usePermissions } from '../../hooks/usePermissions';
+// import MaterielSelector from '../../components/forms/MaterielSelector';
+// import { formatCurrency } from '../../utils/formatters';
+// import { demandesAPI } from '../../services/demandes'; // 🔥 Important !
+
+// const { TextArea } = Input;
+
+// const DemandeEdit = () => {
+//   const navigate = useNavigate();
+//   const { id } = useParams();
+//   const { updateDemande, loading } = useDemandesStore();
+//   const { user } = usePermissions();
+
+//   const [form] = Form.useForm();
+//   const [initialLoading, setInitialLoading] = useState(true);
+//   const [demande, setDemande] = useState(null); // ✅ État local pour la demande
+//   const [selectedMateriels, setSelectedMateriels] = useState([]);
+
+//   // 🔥 Charger la demande via l'API existante
+//   useEffect(() => {
+//     if (id) {
+//       loadDemande();
+//     }
+//   }, [id]);
+
+//   const loadDemande = async () => {
+//     setInitialLoading(true);
+//     try {
+//       const result = await demandesAPI.get(id); // ✅ Utilise votre API existante
+//       const data = result.data;
+//       setDemande(data);
+
+//       // Pré-remplir le formulaire
+//       form.setFieldsValue({
+//         chantier: data.chantier,
+//         duree_mois: data.duree_mois,
+//         observations: data.observations || ''
+//       });
+
+//       // Pré-remplir les matériels
+//       const materiels = data.materiels_demandes?.map(md => ({
+//         id: md.materiel.id,
+//         type_materiel: md.materiel.type_materiel,
+//         prix_unitaire_mru: md.materiel.prix_unitaire_mru,
+//         type_facturation: md.materiel.type_facturation,
+//         quantite: md.quantite,
+//         observations: md.observations || ''
+//       })) || [];
+      
+//       setSelectedMateriels(materiels);
+//     } catch (error) {
+//       console.error('Erreur chargement demande:', error);
+//       message.error('Demande non trouvée');
+//       navigate('/demandes');
+//     } finally {
+//       setInitialLoading(false);
+//     }
+//   };
+
+//   const canEdit = () => {
+//     if (!demande) return false;
+//     return (
+//       (demande.statut === 'BROUILLON' || demande.statut === 'REJETEE') &&
+//       (user?.id === demande.demandeur?.id)
+//     );
+//   };
+
+//   const handleSubmit = async (values) => {
+//     if (!canEdit()) {
+//       message.error('Vous ne pouvez pas modifier cette demande.');
+//       return;
+//     }
+
+//     if (selectedMateriels.length === 0) {
+//       message.error('Veuillez sélectionner au moins un matériel.');
+//       return;
+//     }
+
+//     const payload = {
+//       chantier: values.chantier,
+//       duree_mois: values.duree_mois,
+//       observations: values.observations?.trim() || '',
+//       departement: user?.departement || 'GENERAL',
+//       materiels_demandes: selectedMateriels.map(mat => ({
+//         materiel: mat.id,
+//         quantite: mat.quantite,
+//         observations: mat.observations || ''
+//       }))
+//     };
+
+//     try {
+//       const result = await updateDemande(id, payload);
+//       if (result.success) {
+//         message.success('Demande modifiée avec succès');
+//         navigate(`/demandes/${id}`);
+//       } else {
+//         if (result.error && typeof result.error === 'object') {
+//           Object.entries(result.error).forEach(([field, errors]) => {
+//             message.error(`${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`);
+//           });
+//         } else {
+//           message.error(result.error?.message || 'Erreur lors de la modification');
+//         }
+//       }
+//     } catch (error) {
+//       message.error('Erreur inattendue');
+//     }
+//   };
+
+//   // 🔁 Gestion du chargement initial
+//   if (initialLoading) {
+//     return (
+//       <div style={{ textAlign: 'center', padding: '50px' }}>
+//         <Spin size="large" />
+//         <p>Chargement de la demande...</p>
+//       </div>
+//     );
+//   }
+
+//   // ❌ Demande non trouvée ou non éditable
+//   if (!demande) {
+//     return (
+//       <Card>
+//         <Alert
+//           message="Demande non trouvée"
+//           description="La demande demandée n'existe pas ou a été supprimée."
+//           type="error"
+//           showIcon
+//         />
+//         <Button onClick={() => navigate('/demandes')} style={{ marginTop: 16 }}>
+//           Retour à la liste
+//         </Button>
+//       </Card>
+//     );
+//   }
+
+//   if (!canEdit()) {
+//     return (
+//       <Card>
+//         <Alert
+//           message="Modification non autorisée"
+//           description="Seul le demandeur peut modifier une demande en brouillon ou rejetée."
+//           type="warning"
+//           showIcon
+//         />
+//         <Button onClick={() => navigate(`/demandes/${id}`)} style={{ marginTop: 16 }}>
+//           Voir la demande
+//         </Button>
+//       </Card>
+//     );
+//   }
+
+//   const calculateBudget = () => {
+//     const duree = form.getFieldValue('duree_mois') || demande.duree_mois || 1;
+//     return selectedMateriels.reduce((total, mat) => {
+//       return total + (mat.prix_unitaire_mru * mat.quantite * duree * 30);
+//     }, 0);
+//   };
+
+//   return (
+//     <div>
+//       <Card style={{ marginBottom: 24 }}>
+//         <Row align="middle" justify="space-between">
+//           <Col>
+//             <Space>
+//               <Button
+//                 icon={<ArrowLeftOutlined />}
+//                 onClick={() => navigate(`/demandes/${id}`)}
+//               >
+//                 Retour
+//               </Button>
+//               <div>
+//                 <h2 style={{ margin: 0 }}>Modifier la demande</h2>
+//                 <p style={{ margin: 0, color: '#666' }}>
+//                   {demande.numero}
+//                 </p>
+//               </div>
+//             </Space>
+//           </Col>
+//         </Row>
+//       </Card>
+
+//       <Row gutter={24}>
+//         <Col span={16}>
+//           <Card title="Informations modifiables">
+//             <Alert
+//               message="Modification limitée"
+//               description="Vous ne pouvez modifier une demande que si elle est en brouillon ou a été rejetée."
+//               type="info"
+//               showIcon
+//               style={{ marginBottom: 24 }}
+//             />
+
+//             <Form
+//               form={form}
+//               layout="vertical"
+//               onFinish={handleSubmit}
+//               size="large"
+//             >
+//               <Row gutter={16}>
+//                 <Col span={16}>
+//                   <Form.Item
+//                     name="chantier"
+//                     label="Chantier / Projet"
+//                     rules={[
+//                       { required: true, message: 'Le chantier est obligatoire' },
+//                       { min: 3, message: 'Au moins 3 caractères' }
+//                     ]}
+//                   >
+//                     <Input placeholder="Ex: Construction Route Nouakchott-Rosso" />
+//                   </Form.Item>
+//                 </Col>
+//                 <Col span={8}>
+//                   <Form.Item
+//                     name="duree_mois"
+//                     label="Durée (mois)"
+//                     rules={[{ required: true, message: 'Durée obligatoire' }]}
+//                   >
+//                     <InputNumber
+//                       min={1}
+//                       max={6}
+//                       style={{ width: '100%' }}
+//                       addonAfter="mois"
+//                     />
+//                   </Form.Item>
+//                 </Col>
+//               </Row>
+
+//               <Form.Item name="observations" label="Observations">
+//                 <TextArea
+//                   rows={4}
+//                   placeholder="Spécifications particulières, remarques..."
+//                 />
+//               </Form.Item>
+
+//               <Divider />
+
+//               <h3 style={{ marginBottom: 16 }}>Matériels</h3>
+//               <MaterielSelector
+//                 selectedMateriels={selectedMateriels}
+//                 onMaterielsChange={setSelectedMateriels}
+//                 duree={form.getFieldValue('duree_mois') || demande.duree_mois || 1}
+//               />
+
+//               <Form.Item style={{ marginTop: 24 }}>
+//                 <Space>
+//                   <Button
+//                     type="primary"
+//                     htmlType="submit"
+//                     icon={<SaveOutlined />}
+//                     loading={loading}
+//                   >
+//                     Enregistrer les modifications
+//                   </Button>
+//                   <Button onClick={() => navigate(`/demandes/${id}`)}>
+//                     Annuler
+//                   </Button>
+//                 </Space>
+//               </Form.Item>
+//             </Form>
+//           </Card>
+//         </Col>
+
+//         <Col span={8}>
+//           <Card title="Informations de référence" style={{ marginBottom: 24 }}>
+//             <Descriptions column={1} size="small">
+//               <Descriptions.Item label="Numéro">{demande.numero}</Descriptions.Item>
+//               <Descriptions.Item label="Demandeur">
+//                 {demande.demandeur?.first_name} {demande.demandeur?.last_name}
+//               </Descriptions.Item>
+//               <Descriptions.Item label="Département">{demande.departement}</Descriptions.Item>
+//               <Descriptions.Item label="Statut">
+//                 <span style={{ color: demande.statut === 'BROUILLON' ? '#faad14' : '#ff4d4f' }}>
+//                   {demande.statut === 'BROUILLON' ? 'Brouillon' : 'Rejetée'}
+//                 </span>
+//               </Descriptions.Item>
+//               <Descriptions.Item label="Créée le">
+//                 {new Date(demande.created_at).toLocaleDateString()}
+//               </Descriptions.Item>
+//             </Descriptions>
+//           </Card>
+
+//           <Card title="Budget prévisionnel" size="small">
+//             <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#1890ff' }}>
+//               {formatCurrency(calculateBudget())} MRU
+//             </div>
+//             <div style={{ fontSize: '12px', color: '#666', marginTop: 8 }}>
+//               Basé sur {selectedMateriels.length} matériel(s) et {form.getFieldValue('duree_mois') || demande.duree_mois} mois
+//             </div>
+//           </Card>
+//         </Col>
+//       </Row>
+//     </div>
+//   );
+// };
+
+// export default DemandeEdit;
