@@ -15,7 +15,8 @@ import {
   Typography,
   Empty,
   Progress,
-  Alert
+  Alert,
+  Modal
 } from 'antd';
 import { 
   ArrowLeftOutlined, 
@@ -25,10 +26,12 @@ import {
   ClockCircleOutlined,
   DollarCircleOutlined,
   ToolOutlined,
-  PauseCircleOutlined
+  PauseCircleOutlined,
+  ThunderboltOutlined
 } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import { pointagesAPI } from '../../services/pointages';
+import { usePointagesStore } from '../../store/pointagesStore';
 import { formatCurrency, formatDate, formatNumber } from '../../utils/formatters';
 import GeneratePDFButton from '../../components/pointages/GeneratePDFButton';
 import moment from 'moment';
@@ -41,7 +44,8 @@ const FichePointageDetail = () => {
   const navigate = useNavigate();
   const [fiche, setFiche] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [selectedWeek, setSelectedWeek] = useState('all'); // 'all' ou 'YYYY-WW'
+  const [selectedWeek, setSelectedWeek] = useState('all');
+  const { creerPointagesPeriode } = usePointagesStore();
 
   useEffect(() => {
     loadFiche();
@@ -52,21 +56,38 @@ const FichePointageDetail = () => {
     try {
       const response = await pointagesAPI.getFiche(id);
       setFiche(response.data);
-      // Définir la semaine par défaut à la première semaine avec des pointages
-      if (response.data.pointages_journaliers?.length > 0) {
+      if (response.data.pointages_journaliers?.length > 0 && selectedWeek === 'all') {
         const firstPointage = response.data.pointages_journaliers[0];
         const weekKey = moment(firstPointage.date_pointage).format('YYYY-[W]WW');
         setSelectedWeek(weekKey);
       }
     } catch (error) {
       message.error('Erreur lors du chargement de la fiche');
-      navigate('/pointages');
+      navigate('/pointages/fiches');
     } finally {
       setLoading(false);
     }
   };
 
-  // Fonction pour obtenir toutes les semaines de la période
+  const handleCreerPointagesPeriode = async () => {
+    Modal.confirm({
+      title: 'Générer les jours de pointage ?',
+      icon: <ThunderboltOutlined />,
+      content: `Voulez-vous créer une entrée pour chaque jour de la période (${formatDate(fiche.periode_debut)} au ${formatDate(fiche.periode_fin)}) ? Les jours existants ne seront pas affectés.`,
+      okText: 'Générer',
+      cancelText: 'Annuler',
+      onOk: async () => {
+        const result = await creerPointagesPeriode(id);
+        if (result.success) {
+          message.success(`${result.data.pointages?.length || 0} jours ont été créés.`);
+          loadFiche();
+        } else {
+          message.error(result.error?.message || 'Une erreur est survenue.');
+        }
+      },
+    });
+  };
+
   const getWeeksInPeriod = useMemo(() => {
     if (!fiche) return [];
     
@@ -77,10 +98,9 @@ const FichePointageDetail = () => {
     
     while (current.isSameOrBefore(endDate, 'week')) {
       const weekKey = current.format('YYYY-[W]WW');
-      const weekStart = current.clone().startOf('week').add(1, 'day'); // Lundi
-      const weekEnd = current.clone().endOf('week').add(1, 'day'); // Dimanche
+      const weekStart = current.clone().startOf('week').add(1, 'day');
+      const weekEnd = current.clone().endOf('week').add(1, 'day');
       
-      // Vérifier si cette semaine chevauche la période
       if (weekEnd.isSameOrAfter(startDate) && weekStart.isSameOrBefore(endDate)) {
         weeks.push({
           key: weekKey,
@@ -95,7 +115,6 @@ const FichePointageDetail = () => {
     return weeks;
   }, [fiche]);
 
-  // Fonction pour grouper les pointages par semaine
   const getPointagesByWeek = useMemo(() => {
     if (!fiche?.pointages_journaliers) return {};
     
@@ -112,7 +131,6 @@ const FichePointageDetail = () => {
     return grouped;
   }, [fiche]);
 
-  // Pointages filtrés selon la semaine sélectionnée
   const filteredPointages = useMemo(() => {
     if (selectedWeek === 'all') {
       return fiche?.pointages_journaliers || [];
@@ -120,7 +138,6 @@ const FichePointageDetail = () => {
     return getPointagesByWeek[selectedWeek] || [];
   }, [selectedWeek, fiche, getPointagesByWeek]);
 
-  // Statistiques pour la semaine sélectionnée
   const weekStats = useMemo(() => {
     if (filteredPointages.length === 0) {
       return {
@@ -153,7 +170,6 @@ const FichePointageDetail = () => {
     });
   }, [filteredPointages]);
 
-  // Données pour la ligne de total
   const totalRow = useMemo(() => {
     if (filteredPointages.length === 0) return null;
     return {
@@ -402,7 +418,7 @@ const FichePointageDetail = () => {
             </Descriptions>
           </Card>
 
-          {/* Sélecteur de semaine */}
+          {/* Sélecteur de semaine & Tableau */}
           <Card 
             title={
               <Space>
@@ -411,6 +427,7 @@ const FichePointageDetail = () => {
               </Space>
             }
             extra={
+              (!fiche.pointages_journaliers || fiche.pointages_journaliers.length === 0) ? null : (
               <Select
                 value={selectedWeek}
                 onChange={setSelectedWeek}
@@ -434,89 +451,77 @@ const FichePointageDetail = () => {
                   </Option>
                 ))}
               </Select>
+              )
             }
             style={{ marginBottom: 24, borderRadius: '8px' }}
           >
-            {/* Alert pour complétion */}
-            <Alert
-              message={
-                <Space>
-                  <Progress 
-                    percent={completionRate} 
-                    size="small" 
-                    strokeColor="#52c41a"
-                    showInfo={false}
-                  />
-                  <Text>Complétion: {completionRate}% ({fiche.total_jours_pointes}/{moment(fiche.periode_fin).diff(moment(fiche.periode_debut), 'days') + 1} jours)</Text>
-                </Space>
-              }
-              type={completionRate < 80 ? 'warning' : 'success'}
-              showIcon={false}
-              style={{ marginBottom: 16 }}
-            />
+            {(!fiche.pointages_journaliers || fiche.pointages_journaliers.length === 0) ? (
+              <Empty
+                image={<CalendarOutlined style={{ fontSize: 48, color: '#ccc' }} />}
+                description="Cette fiche de pointage est vide."
+              >
+                <Button
+                  type="primary"
+                  icon={<ThunderboltOutlined />}
+                  onClick={handleCreerPointagesPeriode}
+                >
+                  Générer les jours de pointage pour la période
+                </Button>
+              </Empty>
+            ) : (
+              <>
+                <Alert
+                  message={
+                    <Space>
+                      <Progress 
+                        percent={completionRate} 
+                        size="small" 
+                        strokeColor="#52c41a"
+                        showInfo={false}
+                      />
+                      <Text>Complétion: {completionRate}% ({fiche.total_jours_pointes}/{moment(fiche.periode_fin).diff(moment(fiche.periode_debut), 'days') + 1} jours)</Text>
+                    </Space>
+                  }
+                  type={completionRate < 80 ? 'warning' : 'success'}
+                  showIcon={false}
+                  style={{ marginBottom: 16 }}
+                />
 
-            {/* Statistiques de la semaine sélectionnée */}
-            {selectedWeek !== 'all' && filteredPointages.length > 0 && (
-              <Card size="small" style={{ marginBottom: 16 }}>
-                <Row gutter={12}>
-                  <Col span={6}>
-                    <Statistic
-                      title={<ClockCircleOutlined />}
-                      value={weekStats.jours}
-                      valueStyle={{ fontSize: '16px' }}
-                    />
-                  </Col>
-                  <Col span={6}>
-                    <Statistic
-                      title={<ClockCircleOutlined style={{ color: '#52c41a' }} />}
-                      value={weekStats.heures_travail}
-                      suffix="h"
-                      valueStyle={{ color: '#52c41a', fontSize: '16px' }}
-                    />
-                  </Col>
-                  <Col span={6}>
-                    <Statistic
-                      title={<ToolOutlined style={{ color: '#faad14' }} />}
-                      value={weekStats.heures_panne}
-                      suffix="h"
-                      valueStyle={{ color: '#faad14', fontSize: '16px' }}
-                    />
-                  </Col>
-                  <Col span={6}>
-                    <Statistic
-                      title={<PauseCircleOutlined style={{ color: '#cf1322' }} />}
-                      value={weekStats.heures_arret}
-                      suffix="h"
-                      valueStyle={{ color: '#cf1322', fontSize: '16px' }}
-                    />
-                  </Col>
-                </Row>
-              </Card>
+                {selectedWeek !== 'all' && filteredPointages.length > 0 && (
+                  <Card size="small" style={{ marginBottom: 16 }}>
+                    <Row gutter={12}>
+                      <Col span={6}><Statistic title="Jours" value={weekStats.jours} valueStyle={{ fontSize: '16px' }} /></Col>
+                      <Col span={6}><Statistic title="H. Travail" value={weekStats.heures_travail} suffix="h" valueStyle={{ color: '#52c41a', fontSize: '16px' }} /></Col>
+                      <Col span={6}><Statistic title="H. Panne" value={weekStats.heures_panne} suffix="h" valueStyle={{ color: '#faad14', fontSize: '16px' }} /></Col>
+                      <Col span={6}><Statistic title="H. Arrêt" value={weekStats.heures_arret} suffix="h" valueStyle={{ color: '#cf1322', fontSize: '16px' }} /></Col>
+                    </Row>
+                  </Card>
+                )}
+
+                <Table
+                  columns={pointagesColumns}
+                  dataSource={dataSourceWithTotal}
+                  rowKey="id"
+                  pagination={false}
+                  size="middle"
+                  scroll={{ x: 1000 }}
+                  locale={{
+                    emptyText: (
+                      <Empty 
+                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                        description={
+                          selectedWeek === 'all' 
+                            ? 'Aucun pointage pour cette fiche' 
+                            : 'Aucun pointage pour cette semaine'
+                        }
+                      />
+                    )
+                  }}
+                  footer={() => null}
+                  rowClassName={(record) => record.key === 'total' ? 'ant-table-row-total' : ''}
+                />
+              </>
             )}
-
-            {/* Tableau des pointages */}
-            <Table
-              columns={pointagesColumns}
-              dataSource={dataSourceWithTotal}
-              rowKey="id"
-              pagination={false}
-              size="middle"
-              scroll={{ x: 1000 }}
-              locale={{
-                emptyText: (
-                  <Empty 
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description={
-                      selectedWeek === 'all' 
-                        ? 'Aucun pointage pour cette fiche' 
-                        : 'Aucun pointage pour cette semaine'
-                    }
-                  />
-                )
-              }}
-              footer={() => null}
-              rowClassName={(record) => record.key === 'total' ? 'ant-table-row-total' : ''}
-            />
           </Card>
         </Col>
 
@@ -524,7 +529,7 @@ const FichePointageDetail = () => {
           {/* Statistiques globales */}
           <Card title="Statistiques globales" style={{ marginBottom: 24, borderRadius: '8px' }}>
             <Statistic
-              title={<DollarCircleOutlined />}
+              title="Montant Total Calculé"
               value={formatCurrency(fiche.montant_total_calcule)}
               suffix="MRU"
               precision={3}
@@ -549,7 +554,7 @@ const FichePointageDetail = () => {
                 />
               </Col>
             </Row>
-            <Row gutter={16}>
+            <Row gutter={16} style={{marginTop: 12}}>
               <Col span={12}>
                 <Statistic
                   title="Heures panne"

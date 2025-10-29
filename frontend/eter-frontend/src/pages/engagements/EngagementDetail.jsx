@@ -106,11 +106,8 @@ const EngagementDetail = () => {
     
     const today = moment();
     const dateFin = moment(engagement.date_fin);
-    const dateDebut = moment(engagement.date_debut);
     
-    // if (today.isBefore(dateDebut)) {
-    //   return { status: 'À venir', color: 'blue', icon: <ClockCircleOutlined /> };
-   if (today.isAfter(dateFin)) {
+    if (today.isAfter(dateFin)) {
       return { status: 'Expiré', color: 'red', icon: <ExclamationCircleOutlined /> };
     } else {
       return { status: 'En cours', color: 'green', icon: <CheckCircleOutlined /> };
@@ -224,24 +221,14 @@ const EngagementDetail = () => {
     },
   ];
 
-  if (loading) {
+  if (loading || !engagement) {
     return <Card loading={true} />;
   }
 
-  if (!engagement) {
-    return (
-      <Card>
-        <Empty
-          description="Engagement non trouvé"
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-        />
-      </Card>
-    );
-  }
-console.log(engagement);
   const statutInfo = getStatutEngagement();
   const progress = getProgressDuree();
   const joursRestants = getJoursRestants();
+  const budgetConsommePercent = engagement.budget_previsionnel_mru > 0 ? Math.round(((engagement.montant_actuel_mru || 0) / engagement.budget_previsionnel_mru) * 100) : 0;
 
   return (
     <div>
@@ -305,7 +292,7 @@ console.log(engagement);
       <Row gutter={24}>
         <Col span={16}>
           {/* Informations principales */}
-          <Card title="Informations de l'engagement" style={{ marginBottom: 24 }}>
+          <Card title="Informations de l\'engagement" style={{ marginBottom: 24 }}>
             <Descriptions column={2} bordered>
               <Descriptions.Item label="Numéro d'engagement">
                 <code style={{ 
@@ -358,12 +345,6 @@ console.log(engagement);
                 </div>
               </Descriptions.Item>
 
-              <Descriptions.Item label="Montant total estimé">
-                <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#1890ff' }}>
-                  {formatCurrency(engagement.montant_total_estime_mru)} MRU
-                </div>
-              </Descriptions.Item>
-
               <Descriptions.Item label="Fiches de pointage">
                 <Button
                   type="link"
@@ -390,6 +371,21 @@ console.log(engagement);
             </Descriptions>
           </Card>
 
+          <Card title="Suivi Budgétaire" style={{ marginBottom: 24 }}>
+            <Row gutter={16}>
+                <Col span={8}>
+                    <Statistic title="Budget Prévisionnel" value={formatCurrency(engagement.budget_previsionnel_mru)} suffix="MRU" />
+                </Col>
+                <Col span={8}>
+                    <Statistic title="Montant Actuel Pointé" value={formatCurrency(engagement.montant_actuel_mru)} suffix="MRU" valueStyle={{ color: budgetConsommePercent > 100 ? '#f5222d' : '#52c41a' }} />
+                </Col>
+                <Col span={8}>
+                    <Statistic title="Budget Restant" value={formatCurrency((engagement.budget_previsionnel_mru || 0) - (engagement.montant_actuel_mru || 0))} suffix="MRU" valueStyle={{ color: ((engagement.budget_previsionnel_mru || 0) - (engagement.montant_actuel_mru || 0)) < 0 ? '#f5222d' : '#3f8600'}} />
+                </Col>
+            </Row>
+            <Progress percent={budgetConsommePercent} strokeColor={budgetConsommePercent > 100 ? '#f5222d' : (budgetConsommePercent > 80 ? '#faad14' : '#52c41a')} style={{ marginTop: 16 }} />
+          </Card>
+
           {/* Mise à disposition */}
           <Card title="Mise à disposition" style={{ marginBottom: 24 }}>
             <Descriptions column={2} bordered size="small">
@@ -408,9 +404,7 @@ console.log(engagement);
               </Descriptions.Item>
 
               <Descriptions.Item label="Fournisseur">
-                {/* {engagement.mise_a_disposition?.fournisseur_nom} */}
                 {engagement.mise_a_disposition.fournisseur?.raison_sociale}
-                {/* {engagement?.fournisseur_nom} */}
               </Descriptions.Item>
 
               <Descriptions.Item label="Immatriculation">
@@ -467,23 +461,11 @@ console.log(engagement);
             <Row gutter={16}>
               <Col span={12}>
                 <Statistic
-                  title="Montant Réel Pointé"
-                  value={engagement.montant_reel_pointe}
-                  suffix="MRU"
-                  precision={0}
-                  valueStyle={{ color: '#3f8600' }}
-                />
-              </Col>
-              <Col span={12}>
-                <Statistic
                   title="Fiches créées"
                   value={engagement.fiches_pointage_count || 0}
                   valueStyle={{ color: '#1890ff' }}
                 />
               </Col>
-            </Row>
-            <Divider />
-            <Row gutter={16}>
               <Col span={12}>
                 <Statistic
                   title="Jours restants"
@@ -493,9 +475,12 @@ console.log(engagement);
                   }}
                 />
               </Col>
-              <Col span={12}>
+            </Row>
+            <Divider />
+            <Row gutter={16}>
+              <Col span={24}>
                 <Statistic
-                  title="Progression"
+                  title="Progression de la durée"
                   value={progress}
                   suffix="%"
                   valueStyle={{ 

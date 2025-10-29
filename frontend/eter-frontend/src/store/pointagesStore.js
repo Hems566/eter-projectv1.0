@@ -106,6 +106,21 @@ export const usePointagesStore = create((set, get) => ({
     }
   },
 
+  creerPointagesPeriode: async (ficheId) => {
+    set({ loading: true, error: null });
+    try {
+      const response = await pointagesAPI.creerPointagesPeriode(ficheId);
+      set({ loading: false });
+      return { success: true, data: response.data };
+    } catch (error) {
+      set({ 
+        error: error.response?.data || 'Erreur lors de la création de la période',
+        loading: false 
+      });
+      return { success: false, error: error.response?.data };
+    }
+  },
+
   // === Pointages journaliers ===
   fetchPointagesJournaliers: async (params = {}) => {
     set({ loading: true, error: null });
