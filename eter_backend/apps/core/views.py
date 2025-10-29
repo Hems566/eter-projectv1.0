@@ -784,7 +784,7 @@ class EngagementViewSet(viewsets.ModelViewSet):
         
         # Montants
         montant_total = queryset.aggregate(
-            total=Sum('montant_total_estime_mru')
+            total=Sum('budget_previsionnel_mru')
         )['total'] or 0
         
         # Statistiques par mois
@@ -801,7 +801,7 @@ class EngagementViewSet(viewsets.ModelViewSet):
             'actifs': actifs,
             'expires': expires,
             'expirant_bientot': expirant_bientot,
-            'montant_total_estime': montant_total,
+            'budget_previsionnel_total': montant_total,
             'statistiques_mensuelles': list(stats_mensuelles)
         })
 
